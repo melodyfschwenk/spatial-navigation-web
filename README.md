@@ -59,8 +59,6 @@ spatial_navigation_online/
 2. **Enter Information**: Fill in participant ID, age, gender, and handedness
 3. **Practice Phase**: Complete 4 practice trials with feedback
 4. **Main Experiment**: Complete 9 blocks of 15 trials each
-5. **Download Data**: At the end, click to download your data as CSV
-
 ## Data Output
 
 The task generates a CSV file with the following columns:
