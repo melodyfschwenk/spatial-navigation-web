@@ -191,6 +191,63 @@
     </div>
 
     <script>
+        // ========== ADD GOOGLE SHEETS URL HERE (STEP 5) ==========
+        // Your Google Apps Script Web App URL
+        const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbzw_gLBsA5hY1dU7xZ1Fp67FptHEC9veo95vyId0bBOfu_QLMNFm02Rg0iRzURzx2Cn/exec';
+
+        // Function to save data to Google Sheets
+        async function saveToGoogleSheet(trialData) {
+            try {
+                // Add user agent for browser info
+                trialData.user_agent = navigator.userAgent;
+                
+                // Convert RT to milliseconds if it exists
+                if (trialData.rt !== null && trialData.rt !== undefined) {
+                    trialData.rt_ms = trialData.rt;  // Already in milliseconds
+                }
+                
+                // Send to Google Sheets
+                const response = await fetch(GOOGLE_SHEET_URL, {
+                    method: 'POST',
+                    mode: 'no-cors', // Important for Google Apps Script
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(trialData)
+                });
+                
+                console.log('Data saved to Google Sheets');
+            } catch (error) {
+                console.error('Failed to save to Google Sheets:', error);
+                // Still save locally as backup
+            }
+        }
+
+        // ========== ADD SUMMARY FUNCTION (STEP 6) ==========
+        // Save experiment summary
+        async function saveExperimentSummary() {
+            const summary = {
+                participant_id: state.participantInfo.id,
+                age: state.participantInfo.age,
+                gender: state.participantInfo.gender,
+                handedness: state.participantInfo.handedness,
+                total_trials: state.allData.length,
+                total_correct: state.allData.filter(d => d.accuracy === 1).length,
+                overall_accuracy: (state.allData.filter(d => d.accuracy === 1).length / state.allData.length * 100).toFixed(1),
+                mean_rt: (state.allData.reduce((sum, d) => sum + (d.rt || 0), 0) / state.allData.filter(d => d.rt !== null).length).toFixed(0),
+                completion_time: new Date().toISOString(),
+                trial: 'SUMMARY',
+                block: 'SUMMARY',
+                navigation_type: 'SUMMARY',
+                difficulty: 'SUMMARY'
+            };
+            
+            // Save summary to Google Sheets
+            await saveToGoogleSheet(summary);
+            console.log('Experiment summary saved');
+        }
+        // ========== END OF NEW FUNCTIONS ==========
+
         // Experiment configuration
         const config = {
             trialsPerBlock: 15,
@@ -212,41 +269,6 @@
             stimulusOnsetTime: null,
             isPractice: false
         };
-
-        
-
-        // Load stimulus mapping from CSV
-        async function loadStimulusMapping() {
-            // In a real implementation, you would load your CSV file here
-            // For now, using placeholder data structure
-            // You'll need to implement CSV parsing or convert to JSON
-            
-            // Example structure:
-            for (let i = 1; i <= 26; i++) {
-                stimulusMapping.easy.push({
-                    id: `easy_${i}`,
-                    file: `stimuli/${i}.png`,
-                    egocentric_correct: ['up', 'down', 'left', 'right'][Math.floor(Math.random() * 4)],
-                    allocentric_correct: ['up', 'down', 'left', 'right'][Math.floor(Math.random() * 4)]
-                });
-            }
-            for (let i = 27; i <= 52; i++) {
-                stimulusMapping.hard.push({
-                    id: `hard_${i}`,
-                    file: `stimuli/${i}.png`,
-                    egocentric_correct: ['up', 'down', 'left', 'right'][Math.floor(Math.random() * 4)],
-                    allocentric_correct: ['up', 'down', 'left', 'right'][Math.floor(Math.random() * 4)]
-                });
-            }
-            for (let i = 53; i <= 78; i++) {
-                stimulusMapping.control.push({
-                    id: `control_${i}`,
-                    file: `stimuli/${i}.png`,
-                    egocentric_correct: ['up', 'down', 'left', 'right'][Math.floor(Math.random() * 4)],
-                    allocentric_correct: ['up', 'down', 'left', 'right'][Math.floor(Math.random() * 4)]
-                });
-            }
-        }
 
         // Generate block sequence based on counterbalancing
         function generateBlockSequence(participantId) {
@@ -289,12 +311,9 @@
             // Generate block sequence
             config.blocks = generateBlockSequence(state.participantInfo.id);
             
-            // Load stimuli and start
-            loadStimulusMapping().then(() => {
-                // Start with practice
-                state.isPractice = true;
-                showPracticeInstructions();
-            });
+            // Start with practice
+            state.isPractice = true;
+            showPracticeInstructions();
             
             document.getElementById('data-entry-screen').classList.remove('active');
         }
@@ -408,6 +427,7 @@
                 
                 state.stimulusOnsetTime = Date.now();
                 state.trialStartTime = Date.now();
+                state.currentStimulus = stimulus;  // Store current stimulus for response handling
                 
                 // Set up response handling
                 document.addEventListener('keydown', handleResponse);
@@ -448,17 +468,19 @@
             const response = responseMap[responseKey];
             
             // Determine correct response and accuracy
-            let correct, accuracy;
+            let correct, accuracy, stimulus_id;
             if (state.isPractice) {
                 const navType = state.currentTrial < 2 ? 'egocentric' : 'allocentric';
                 const stimuli = stimulusMapping.easy;
                 const stimulus = stimuli[state.currentTrial % stimuli.length];
                 correct = navType === 'egocentric' ? stimulus.egocentric_correct : stimulus.allocentric_correct;
+                stimulus_id = stimulus.id;
             } else {
                 const block = config.blocks[state.currentBlock];
                 const stimuli = stimulusMapping[block.difficulty];
                 const stimulus = stimuli[state.currentTrial % stimuli.length];
                 correct = block.navType === 'egocentric' ? stimulus.egocentric_correct : stimulus.allocentric_correct;
+                stimulus_id = stimulus.id;
             }
             
             accuracy = response === correct ? 1 : 0;
@@ -466,19 +488,27 @@
             // Record trial data
             const trialData = {
                 participant_id: state.participantInfo.id,
+                age: state.participantInfo.age,
+                gender: state.participantInfo.gender,
+                handedness: state.participantInfo.handedness,
                 block: state.currentBlock,
                 trial: state.currentTrial + 1,
                 navigation_type: state.isPractice ? (state.currentTrial < 2 ? 'egocentric' : 'allocentric') : 
                                 config.blocks[state.currentBlock].navType,
                 difficulty: state.isPractice ? 'practice' : config.blocks[state.currentBlock].difficulty,
+                stimulus_id: stimulus_id,
                 response: response,
                 correct_response: correct,
                 accuracy: accuracy,
-                rt: rt,
+                rt_ms: rt,  // Already in milliseconds
                 timestamp: new Date().toISOString()
             };
             
             state.blockData.push(trialData);
+            
+            // ========== SAVE TO GOOGLE SHEETS (THIS IS WHERE STEP 5 GETS CALLED) ==========
+            // Save this trial to Google Sheets
+            saveToGoogleSheet(trialData);
             
             // Show feedback
             showFeedback(accuracy);
@@ -547,7 +577,7 @@
         }
 
         // Show completion screen
-        function showCompletion() {
+        async function showCompletion() {
             const feedbackScreen = document.getElementById('feedback-screen');
             const feedbackText = document.getElementById('feedback-text');
             const continueButton = document.getElementById('continue-button');
@@ -557,11 +587,16 @@
             const totalCorrect = state.allData.filter(d => d.accuracy === 1).length;
             const accuracy = (totalCorrect / state.allData.length * 100).toFixed(1);
             
+            // ========== SAVE SUMMARY TO GOOGLE SHEETS (STEP 6) ==========
+            // Save experiment summary
+            await saveExperimentSummary();
+            
             feedbackText.innerHTML = `
                 <h2>Experiment Complete!</h2>
                 <p>Thank you for participating.</p>
+                <p>Your data has been automatically saved.</p>
                 <p>Overall accuracy: ${accuracy}%</p>
-                <p>Click below to download your data.</p>
+                <p>You may also download a backup copy of your data:</p>
             `;
             feedbackText.style.color = '#333';
             
