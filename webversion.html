@@ -69,6 +69,11 @@
             background: #45a049;
         }
         
+        .button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        
         .fixation {
             font-size: 48px;
             font-weight: bold;
@@ -109,6 +114,7 @@
             font-size: 16px;
             border: 1px solid #ddd;
             border-radius: 4px;
+            width: 200px;
         }
         
         .form-group {
@@ -130,6 +136,28 @@
         #download-data:hover {
             background: #1976D2;
         }
+        
+        #participant-id-display {
+            font-weight: bold;
+            color: #4CAF50;
+            font-size: 18px;
+            padding: 10px;
+            background: #f0f0f0;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .group-description {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+            font-style: italic;
+        }
+        
+        .loading {
+            color: #999;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -139,10 +167,24 @@
         <!-- Data Entry Screen -->
         <div id="data-entry-screen" class="active">
             <h2>Spatial Navigation Task</h2>
+            
             <div class="form-group">
-                <label>Participant ID:</label>
-                <input type="text" id="participant-id" placeholder="Enter ID">
+                <label>Participant Group:</label>
+                <select id="participant-group" onchange="updateParticipantID()">
+                    <option value="">Select your group...</option>
+                    <option value="DF">Deaf Fluent Signer</option>
+                    <option value="HF">Hearing Fluent Signer</option>
+                    <option value="DNF">Deaf Non-Fluent Signer</option>
+                    <option value="HNF">Hearing Non-Fluent Signer</option>
+                    <option value="HNS">Hearing Non-Signer</option>
+                </select>
             </div>
+            <div class="group-description" id="group-desc"></div>
+            
+            <div id="participant-id-display" style="display:none;">
+                Your ID: <span id="generated-id" class="loading">Generating...</span>
+            </div>
+            
             <div class="form-group">
                 <label>Age:</label>
                 <input type="number" id="age" min="18" max="100">
@@ -166,7 +208,10 @@
                     <option value="ambidextrous">Ambidextrous</option>
                 </select>
             </div>
-            <button class="button" onclick="startExperiment()">Start Experiment</button>
+            
+            <button class="button" id="start-button" onclick="startExperiment()" disabled>
+                Please select your group first
+            </button>
         </div>
         
         <!-- Instruction Screen -->
@@ -191,9 +236,93 @@
     </div>
 
     <script>
-        // ========== ADD GOOGLE SHEETS URL HERE (STEP 5) ==========
-        // Your Google Apps Script Web App URL
+        // Google Sheets URL - Your actual URL
         const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbzw_gLBsA5hY1dU7xZ1Fp67FptHEC9veo95vyId0bBOfu_QLMNFm02Rg0iRzURzx2Cn/exec';
+        
+        // Participant ID management
+        let generatedParticipantID = null;
+
+        // Group descriptions
+        const groupDescriptions = {
+            'DF': 'Deaf individuals who are fluent in sign language',
+            'HF': 'Hearing individuals who are fluent in sign language',
+            'DNF': 'Deaf individuals who are not fluent in sign language',
+            'HNF': 'Hearing individuals who are not fluent in sign language',
+            'HNS': 'Hearing individuals who do not know sign language'
+        };
+
+        // Function to get next participant number - uses localStorage for tracking
+        async function getNextParticipantNumber(groupCode) {
+            try {
+                // Try to query Google Sheets for the next ID
+                const response = await fetch(GOOGLE_SHEET_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'getNextId',
+                        groupCode: groupCode
+                    })
+                });
+                
+                // Since no-cors mode, we can't read the response
+                // So we'll use localStorage as a fallback to track IDs locally
+                const storageKey = `lastId_${groupCode}`;
+                let lastNumber = parseInt(localStorage.getItem(storageKey) || '0');
+                lastNumber++;
+                localStorage.setItem(storageKey, lastNumber.toString());
+                
+                return lastNumber.toString().padStart(3, '0');
+                
+            } catch (error) {
+                console.error('Error getting next participant number:', error);
+                // Fallback to timestamp-based ID
+                const timestamp = Date.now();
+                const number = (timestamp % 1000).toString().padStart(3, '0');
+                return number;
+            }
+        }
+
+        // Update participant ID when group is selected
+        async function updateParticipantID() {
+            const groupSelect = document.getElementById('participant-group');
+            const idDisplay = document.getElementById('participant-id-display');
+            const generatedIdSpan = document.getElementById('generated-id');
+            const startButton = document.getElementById('start-button');
+            const groupDesc = document.getElementById('group-desc');
+            
+            if (groupSelect.value) {
+                // Show group description
+                groupDesc.textContent = groupDescriptions[groupSelect.value];
+                
+                // Show loading state
+                idDisplay.style.display = 'block';
+                generatedIdSpan.textContent = 'Generating...';
+                generatedIdSpan.className = 'loading';
+                startButton.disabled = true;
+                startButton.textContent = 'Generating ID...';
+                
+                // Get next number for this group
+                const nextNumber = await getNextParticipantNumber(groupSelect.value);
+                
+                // Generate the ID
+                generatedParticipantID = `${groupSelect.value}-online-${nextNumber}`;
+                
+                // Update display
+                generatedIdSpan.textContent = generatedParticipantID;
+                generatedIdSpan.className = '';
+                startButton.disabled = false;
+                startButton.textContent = 'Start Experiment';
+            } else {
+                idDisplay.style.display = 'none';
+                startButton.disabled = true;
+                startButton.textContent = 'Please select your group first';
+                groupDesc.textContent = '';
+                generatedParticipantID = null;
+            }
+        }
 
         // Function to save data to Google Sheets
         async function saveToGoogleSheet(trialData) {
@@ -201,15 +330,10 @@
                 // Add user agent for browser info
                 trialData.user_agent = navigator.userAgent;
                 
-                // Convert RT to milliseconds if it exists
-                if (trialData.rt !== null && trialData.rt !== undefined) {
-                    trialData.rt_ms = trialData.rt;  // Already in milliseconds
-                }
-                
                 // Send to Google Sheets
                 const response = await fetch(GOOGLE_SHEET_URL, {
                     method: 'POST',
-                    mode: 'no-cors', // Important for Google Apps Script
+                    mode: 'no-cors',
                     headers: {
                         'Content-Type': 'application/json',
                     },
@@ -219,15 +343,14 @@
                 console.log('Data saved to Google Sheets');
             } catch (error) {
                 console.error('Failed to save to Google Sheets:', error);
-                // Still save locally as backup
             }
         }
 
-        // ========== ADD SUMMARY FUNCTION (STEP 6) ==========
         // Save experiment summary
         async function saveExperimentSummary() {
             const summary = {
                 participant_id: state.participantInfo.id,
+                participant_group: state.participantInfo.group,
                 age: state.participantInfo.age,
                 gender: state.participantInfo.gender,
                 handedness: state.participantInfo.handedness,
@@ -242,11 +365,9 @@
                 difficulty: 'SUMMARY'
             };
             
-            // Save summary to Google Sheets
             await saveToGoogleSheet(summary);
             console.log('Experiment summary saved');
         }
-        // ========== END OF NEW FUNCTIONS ==========
 
         // Experiment configuration
         const config = {
@@ -272,8 +393,10 @@
 
         // Generate block sequence based on counterbalancing
         function generateBlockSequence(participantId) {
-            // Simple counterbalancing based on participant ID
-            const cb = (parseInt(participantId) || 0) % 4 + 1;
+            // Extract number from ID for counterbalancing
+            const matches = participantId.match(/\d+/);
+            const number = matches ? parseInt(matches[0]) : 0;
+            const cb = (number % 4) + 1;
             
             const latinSquare = [
                 [['egocentric', 'easy'], ['egocentric', 'hard'], ['allocentric', 'easy'], ['allocentric', 'hard']],
@@ -285,7 +408,7 @@
             const sequence = latinSquare[cb - 1];
             const blocks = [];
             
-            // Add each condition twice (as per original with 2 repetitions)
+            // Add each condition twice
             sequence.forEach(([navType, difficulty]) => {
                 blocks.push({ navType, difficulty });
                 blocks.push({ navType, difficulty });
@@ -299,12 +422,28 @@
 
         // Start experiment
         function startExperiment() {
+            if (!generatedParticipantID) {
+                alert('Please select your participant group first');
+                return;
+            }
+            
+            // Validate required fields
+            const age = document.getElementById('age').value;
+            const gender = document.getElementById('gender').value;
+            const handedness = document.getElementById('handedness').value;
+            
+            if (!age || !gender || !handedness) {
+                alert('Please fill in all required fields (Age, Gender, Handedness)');
+                return;
+            }
+            
             // Collect participant info
             state.participantInfo = {
-                id: document.getElementById('participant-id').value || 'test',
-                age: document.getElementById('age').value,
-                gender: document.getElementById('gender').value,
-                handedness: document.getElementById('handedness').value,
+                id: generatedParticipantID,
+                group: document.getElementById('participant-group').value,
+                age: age,
+                gender: gender,
+                handedness: handedness,
                 timestamp: new Date().toISOString()
             };
             
@@ -378,12 +517,10 @@
             document.getElementById('instruction-screen').classList.remove('active');
             
             if (state.isPractice) {
-                // Start practice trials
                 state.currentTrial = 0;
                 state.blockData = [];
                 runPracticeTrial();
             } else {
-                // Start main experiment block
                 state.currentTrial = 0;
                 state.blockData = [];
                 nextTrial();
@@ -393,14 +530,12 @@
         // Run practice trial
         function runPracticeTrial() {
             if (state.currentTrial >= config.practiceTrials) {
-                // Practice complete
                 state.isPractice = false;
                 state.currentBlock = 0;
                 showBlockInstructions();
                 return;
             }
             
-            // Alternate between egocentric and allocentric for practice
             const navType = state.currentTrial < 2 ? 'egocentric' : 'allocentric';
             const stimuli = stimulusMapping.easy;
             const stimulus = stimuli[state.currentTrial % stimuli.length];
@@ -414,25 +549,21 @@
             const stimulusImage = document.getElementById('stimulus-image');
             const fixation = document.getElementById('fixation');
             
-            // Show fixation first
             fixation.style.display = 'block';
             stimulusImage.style.display = 'none';
             stimulusScreen.classList.add('active');
             
             setTimeout(() => {
-                // Show stimulus
                 fixation.style.display = 'none';
                 stimulusImage.style.display = 'block';
                 stimulusImage.src = stimulus.file;
                 
                 state.stimulusOnsetTime = Date.now();
                 state.trialStartTime = Date.now();
-                state.currentStimulus = stimulus;  // Store current stimulus for response handling
+                state.currentStimulus = stimulus;
                 
-                // Set up response handling
                 document.addEventListener('keydown', handleResponse);
                 
-                // Timeout for no response
                 state.responseTimeout = setTimeout(() => {
                     handleResponse({ key: 'timeout' });
                 }, config.maxResponseTime);
@@ -442,22 +573,16 @@
 
         // Handle keyboard response
         function handleResponse(event) {
-            // Only process arrow keys and timeout
             const validKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'timeout'];
             
             let responseKey = event.key || event;
             if (!validKeys.includes(responseKey)) return;
             
-            // Clear timeout
             clearTimeout(state.responseTimeout);
-            
-            // Remove event listener
             document.removeEventListener('keydown', handleResponse);
             
-            // Calculate RT
             const rt = responseKey === 'timeout' ? null : Date.now() - state.stimulusOnsetTime;
             
-            // Map response
             const responseMap = {
                 'ArrowUp': 'up',
                 'ArrowDown': 'down',
@@ -467,7 +592,6 @@
             };
             const response = responseMap[responseKey];
             
-            // Determine correct response and accuracy
             let correct, accuracy, stimulus_id;
             if (state.isPractice) {
                 const navType = state.currentTrial < 2 ? 'egocentric' : 'allocentric';
@@ -485,9 +609,9 @@
             
             accuracy = response === correct ? 1 : 0;
             
-            // Record trial data
             const trialData = {
                 participant_id: state.participantInfo.id,
+                participant_group: state.participantInfo.group,
                 age: state.participantInfo.age,
                 gender: state.participantInfo.gender,
                 handedness: state.participantInfo.handedness,
@@ -500,17 +624,15 @@
                 response: response,
                 correct_response: correct,
                 accuracy: accuracy,
-                rt_ms: rt,  // Already in milliseconds
+                rt_ms: rt,
                 timestamp: new Date().toISOString()
             };
             
             state.blockData.push(trialData);
             
-            // ========== SAVE TO GOOGLE SHEETS (THIS IS WHERE STEP 5 GETS CALLED) ==========
-            // Save this trial to Google Sheets
+            // Save to Google Sheets
             saveToGoogleSheet(trialData);
             
-            // Show feedback
             showFeedback(accuracy);
         }
 
@@ -519,7 +641,6 @@
             document.getElementById('stimulus-screen').classList.remove('active');
             
             if (state.isPractice) {
-                // Show detailed feedback for practice
                 const feedbackScreen = document.getElementById('feedback-screen');
                 const feedbackText = document.getElementById('feedback-text');
                 
@@ -534,7 +655,6 @@
                     runPracticeTrial();
                 }, 1500);
             } else {
-                // Brief or no feedback for main experiment
                 setTimeout(() => {
                     nextTrial();
                 }, config.feedbackDuration);
@@ -546,19 +666,15 @@
             state.currentTrial++;
             
             if (state.currentTrial >= config.trialsPerBlock) {
-                // Block complete
                 state.allData = state.allData.concat(state.blockData);
                 state.currentBlock++;
                 
                 if (state.currentBlock >= config.blocks.length) {
-                    // Experiment complete
                     showCompletion();
                 } else {
-                    // Next block
                     showBlockInstructions();
                 }
             } else {
-                // Next trial in current block
                 const block = config.blocks[state.currentBlock];
                 const stimuli = stimulusMapping[block.difficulty];
                 const stimulus = stimuli[state.currentTrial % stimuli.length];
@@ -583,12 +699,9 @@
             const continueButton = document.getElementById('continue-button');
             const downloadButton = document.getElementById('download-data');
             
-            // Calculate overall accuracy
             const totalCorrect = state.allData.filter(d => d.accuracy === 1).length;
             const accuracy = (totalCorrect / state.allData.length * 100).toFixed(1);
             
-            // ========== SAVE SUMMARY TO GOOGLE SHEETS (STEP 6) ==========
-            // Save experiment summary
             await saveExperimentSummary();
             
             feedbackText.innerHTML = `
@@ -596,7 +709,10 @@
                 <p>Thank you for participating.</p>
                 <p>Your data has been automatically saved.</p>
                 <p>Overall accuracy: ${accuracy}%</p>
-                <p>You may also download a backup copy of your data:</p>
+                <p>Participant ID: ${state.participantInfo.id}</p>
+                <hr style="margin: 20px 0;">
+                <p style="font-size: 16px;">You may close this window now.</p>
+                <p style="font-size: 14px; color: #666;">Optional: Download a backup copy of your data below</p>
             `;
             feedbackText.style.color = '#333';
             
@@ -607,7 +723,6 @@
 
         // Download data as CSV
         function downloadData() {
-            // Convert data to CSV
             const headers = Object.keys(state.allData[0]);
             const csvContent = [
                 headers.join(','),
@@ -616,7 +731,6 @@
                 )
             ].join('\n');
             
-            // Create download link
             const blob = new Blob([csvContent], { type: 'text/csv' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
