@@ -13,7 +13,7 @@ Participants view maze stimuli and must indicate the first step needed to reach 
 
 ## Features
 
-- **Counterbalanced Design**: Automatic Latin Square counterbalancing based on participant ID
+- **Counterbalanced Design**: Automatic Latin Square counterbalancing based on participant ID 
 - **Practice Trials**: 4 practice trials before the main experiment
 - **9 Blocks**: 15 trials per block (135 total trials)
 - **Data Export**: Automatic CSV download at experiment completion
@@ -34,20 +34,7 @@ spatial_navigation_online/
 └── README.md               # This file
 ```
 
-## Quick Start
 
-### Local Testing
-
-1. Open a terminal in the project directory
-2. Start a local server:
-   ```bash
-   python -m http.server 8000
-   ```
-   Or with Python 2:
-   ```bash
-   python -m SimpleHTTPServer 8000
-   ```
-3. Open your browser and navigate to: `http://localhost:8000/webversion.html`
 
 ### Online Deployment
 
