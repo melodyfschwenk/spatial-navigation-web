@@ -52,9 +52,6 @@ spatial_navigation_online/
 3. Drag and drop the zip file
 4. Get an instant URL
 
-#### Option 3: University/Lab Server
-
-Upload all files maintaining the directory structure to your institution's web server.
 
 ## Participant Instructions
 
