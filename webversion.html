@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spatial Navigation Task</title>
-    <script src="stimulus_mappings.js"></script>
     <style>
         body {
             margin: 0;
@@ -94,6 +93,7 @@
             font-weight: bold;
             color: white;
             font-size: 20px;
+            border-radius: 5px;
         }
         
         .egocentric-header {
@@ -169,6 +169,7 @@
             padding: 5px;
             border: 1px solid #ddd;
             display: none;
+            max-width: 300px;
         }
         
         .debug-info.active {
@@ -254,6 +255,9 @@
         <div class="debug-info" id="debug-info"></div>
     </div>
 
+    <!-- Load stimulus mappings first, BEFORE main script -->
+    <script src="stimulus_mappings.js"></script>
+    
     <script>
         // Google Sheets URL
         const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbzw_gLBsA5hY1dU7xZ1Fp67FptHEC9veo95vyId0bBOfu_QLMNFm02Rg0iRzURzx2Cn/exec';
@@ -263,6 +267,19 @@
         const debugMode = urlParams.get('debug') === 'true';
         if (debugMode) {
             document.getElementById('debug-info').classList.add('active');
+            console.log('Debug mode enabled');
+        }
+        
+        // Check if stimulus mappings loaded
+        if (typeof stimulusMapping === 'undefined') {
+            alert('Error: Stimulus mappings not loaded. Please refresh the page.');
+            console.error('stimulusMapping is not defined - check that stimulus_mappings.js is loading correctly');
+        } else {
+            console.log('Stimulus mappings loaded successfully:', {
+                easy: stimulusMapping.easy.length,
+                hard: stimulusMapping.hard.length,
+                control: stimulusMapping.control.length
+            });
         }
         
         // Participant ID management
@@ -300,7 +317,10 @@
             isPractice: false,
             currentBlockStimuli: [],
             blockStimuliPool: {},
-            usedStimuliTracker: {}
+            usedStimuliTracker: {},
+            currentStimulus: null,
+            currentNavType: null,
+            currentDifficulty: null
         };
 
         // Enhanced randomization utilities
@@ -334,30 +354,39 @@
             return new RandomGenerator(seed);
         }
 
-        // Get next participant number
+        // Get next participant number - FIXED for GitHub Pages
         async function getNextParticipantNumber(groupCode) {
             try {
-                const response = await fetch(GOOGLE_SHEET_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        action: 'getNextId',
-                        groupCode: groupCode
-                    })
-                });
-                
+                // Use localStorage for ID tracking (works on GitHub Pages)
                 const storageKey = `lastId_${groupCode}`;
                 let lastNumber = parseInt(localStorage.getItem(storageKey) || '0');
+                
+                // Try to sync with Google Sheets (might fail due to CORS, but that's OK)
+                try {
+                    await fetch(GOOGLE_SHEET_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            action: 'getNextId',
+                            groupCode: groupCode
+                        })
+                    });
+                } catch (fetchError) {
+                    console.log('Could not sync with Google Sheets (expected on GitHub Pages)');
+                }
+                
+                // Increment and save locally
                 lastNumber++;
                 localStorage.setItem(storageKey, lastNumber.toString());
                 
                 return lastNumber.toString().padStart(3, '0');
                 
             } catch (error) {
-                console.error('Error getting next participant number:', error);
+                console.warn('Using fallback ID generation:', error.message);
+                // Fallback: use timestamp-based ID
                 const timestamp = Date.now();
                 const number = (timestamp % 1000).toString().padStart(3, '0');
                 return number;
@@ -429,12 +458,24 @@
             return blocks;
         }
 
-        // Prepare stimuli for a block with enhanced randomization
+        // Prepare stimuli for a block with enhanced randomization - FIXED
         function prepareBlockStimuli(navType, difficulty, blockIndex) {
+            // Check if stimulusMapping is loaded
+            if (typeof stimulusMapping === 'undefined') {
+                console.error('Stimulus mappings not loaded!');
+                alert('Error: Stimulus files not loaded. Please refresh the page.');
+                return [];
+            }
+            
             const rng = createRandomGenerator(state.participantInfo.id + '_block' + blockIndex);
             
             // Get all available stimuli for this condition
-            let availableStimuli = [...stimulusMapping[difficulty]];
+            let availableStimuli = [...(stimulusMapping[difficulty] || [])];
+            
+            if (availableStimuli.length === 0) {
+                console.error(`No stimuli found for difficulty: ${difficulty}`);
+                return [];
+            }
             
             // Initialize tracking for this condition if needed
             const conditionKey = `${navType}_${difficulty}`;
@@ -497,12 +538,13 @@
             }
         }
 
-        // Save to Google Sheets
+        // Save to Google Sheets - FIXED for GitHub Pages
         async function saveToGoogleSheet(trialData) {
             try {
                 trialData.user_agent = navigator.userAgent;
                 
-                const response = await fetch(GOOGLE_SHEET_URL, {
+                // Try to save to Google Sheets (might fail due to CORS on GitHub Pages)
+                await fetch(GOOGLE_SHEET_URL, {
                     method: 'POST',
                     mode: 'no-cors',
                     headers: {
@@ -511,9 +553,10 @@
                     body: JSON.stringify(trialData)
                 });
                 
-                console.log('Data saved to Google Sheets');
+                console.log('Data sent to Google Sheets');
             } catch (error) {
-                console.error('Failed to save to Google Sheets:', error);
+                console.warn('Could not save to Google Sheets (data saved locally):', error.message);
+                // Data is already saved in state.allData for local download
             }
         }
 
@@ -528,7 +571,7 @@
                 total_trials: state.allData.length,
                 total_correct: state.allData.filter(d => d.accuracy === 1).length,
                 overall_accuracy: (state.allData.filter(d => d.accuracy === 1).length / state.allData.length * 100).toFixed(1),
-                mean_rt: (state.allData.reduce((sum, d) => sum + (d.rt || 0), 0) / state.allData.filter(d => d.rt !== null).length).toFixed(0),
+                mean_rt: (state.allData.reduce((sum, d) => sum + (d.rt_ms || 0), 0) / state.allData.filter(d => d.rt_ms !== null).length).toFixed(0),
                 completion_time: new Date().toISOString(),
                 trial: 'SUMMARY',
                 block: 'SUMMARY',
@@ -732,7 +775,7 @@
                 age: state.participantInfo.age,
                 gender: state.participantInfo.gender,
                 handedness: state.participantInfo.handedness,
-                block: state.currentBlock,
+                block: state.isPractice ? 'practice' : state.currentBlock + 1,
                 trial: state.currentTrial + 1,
                 navigation_type: state.currentNavType,
                 difficulty: state.currentDifficulty,
@@ -744,7 +787,9 @@
                 timestamp: new Date().toISOString()
             };
             
-            state.blockData.push(trialData);
+            if (!state.isPractice) {
+                state.blockData.push(trialData);
+            }
             
             // Save to Google Sheets
             saveToGoogleSheet(trialData);
@@ -794,6 +839,11 @@
                 const block = config.blocks[state.currentBlock];
                 const stimulus = state.currentBlockStimuli[state.currentTrial];
                 
+                if (!stimulus) {
+                    console.error('No stimulus found for trial', state.currentTrial);
+                    return;
+                }
+                
                 presentStimulus(stimulus, block.navType, block.difficulty);
             }
         }
@@ -801,10 +851,7 @@
         // Update progress display
         function updateProgress() {
             const progress = document.getElementById('progress');
-            const totalTrials = config.blocks.length * config.trialsPerBlock;
-            const completedTrials = state.currentBlock * config.trialsPerBlock + state.currentTrial;
-            
-            progress.textContent = `Block ${state.currentBlock + 1}/${config.blocks.length} | Trial ${state.currentTrial}/${config.trialsPerBlock}`;
+            progress.textContent = `Block ${state.currentBlock + 1}/${config.blocks.length} | Trial ${state.currentTrial + 1}/${config.trialsPerBlock}`;
         }
 
         // Show completion screen
@@ -838,15 +885,27 @@
 
         // Download data as CSV
         function downloadData() {
+            if (state.allData.length === 0) {
+                alert('No data to download');
+                return;
+            }
+            
             const headers = Object.keys(state.allData[0]);
             const csvContent = [
                 headers.join(','),
                 ...state.allData.map(row => 
-                    headers.map(header => row[header]).join(',')
+                    headers.map(header => {
+                        const value = row[header];
+                        // Escape values that contain commas
+                        if (typeof value === 'string' && value.includes(',')) {
+                            return `"${value}"`;
+                        }
+                        return value || '';
+                    }).join(',')
                 )
             ].join('\n');
             
-            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
