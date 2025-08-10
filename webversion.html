@@ -5,21 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spatial Navigation Task</title>
     <script src="stimulus_mappings.js"></script>
-    <script>
-        // Wait for DOM to be ready
-        document.addEventListener('DOMContentLoaded', function() {
-            // Check if stimulus mappings loaded
-            if (typeof stimulusMapping === 'undefined') {
-                console.error('ERROR: stimulus_mappings.js failed to load or stimulusMapping variable is not defined');
-                alert('Error loading experiment resources. Please refresh the page.');
-            } else {
-                console.log('Stimulus mappings loaded successfully:');
-                console.log(`- Easy: ${stimulusMapping.easy ? stimulusMapping.easy.length : 0} stimuli`);
-                console.log(`- Hard: ${stimulusMapping.hard ? stimulusMapping.hard.length : 0} stimuli`);
-                console.log(`- Control: ${stimulusMapping.control ? stimulusMapping.control.length : 0} stimuli`);
-            }
-        });
-    </script>
     <style>
         body {
             margin: 0;
@@ -311,20 +296,6 @@
     </div>
 
     <script>
-        // Wait for DOM to be ready
-        document.addEventListener('DOMContentLoaded', function() {
-            // Check if stimulus mappings loaded
-            if (typeof stimulusMapping === 'undefined') {
-                console.error('ERROR: stimulus_mappings.js failed to load or stimulusMapping variable is not defined');
-                alert('Error loading experiment resources. Please refresh the page.');
-            } else {
-                console.log('Stimulus mappings loaded successfully:');
-                console.log(`- Easy: ${stimulusMapping.easy ? stimulusMapping.easy.length : 0} stimuli`);
-                console.log(`- Hard: ${stimulusMapping.hard ? stimulusMapping.hard.length : 0} stimuli`);
-                console.log(`- Control: ${stimulusMapping.control ? stimulusMapping.control.length : 0} stimuli`);
-            }
-        });
-
         // Google Sheets URL - Your actual URL
         const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbzw_gLBsA5hY1dU7xZ1Fp67FptHEC9veo95vyId0bBOfu_QLMNFm02Rg0iRzURzx2Cn/exec';
         
@@ -1067,6 +1038,21 @@
             document.body.removeChild(a);
             window.URL.revokeObjectURL(url);
         }
+
+        // Check stimulus mappings on page load
+        window.addEventListener('load', function() {
+            if (typeof stimulusMapping === 'undefined') {
+                console.error('ERROR: stimulusMapping is undefined after page load');
+                document.getElementById('start-button').textContent = 'Error: Stimulus data not loaded';
+                document.getElementById('start-button').disabled = true;
+            } else {
+                console.log('✓ Stimulus mappings loaded successfully:');
+                console.log(`  - Easy: ${stimulusMapping.easy ? stimulusMapping.easy.length : 0} stimuli`);
+                console.log(`  - Hard: ${stimulusMapping.hard ? stimulusMapping.hard.length : 0} stimuli`);
+                console.log(`  - Control: ${stimulusMapping.control ? stimulusMapping.control.length : 0} stimuli`);
+                console.log(`  - Total: ${(stimulusMapping.easy ? stimulusMapping.easy.length : 0) + (stimulusMapping.hard ? stimulusMapping.hard.length : 0) + (stimulusMapping.control ? stimulusMapping.control.length : 0)} stimuli`);
+            }
+        });
     </script>
 </body>
 </html>
