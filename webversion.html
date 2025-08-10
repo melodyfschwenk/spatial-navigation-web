@@ -29,15 +29,29 @@
             background: white;
         }
         
+        /* Smooth transitions between screens */
         #instruction-screen, #stimulus-screen, #feedback-screen, #data-entry-screen {
             display: none;
             text-align: center;
             padding: 20px;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
         }
         
         #instruction-screen.active, #stimulus-screen.active, 
         #feedback-screen.active, #data-entry-screen.active {
             display: block;
+            opacity: 1;
+        }
+        
+        /* Add fade-in animation */
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
         
         #stimulus-image {
@@ -63,15 +77,20 @@
             cursor: pointer;
             margin: 10px;
             border-radius: 4px;
+            transition: all 0.2s ease;
         }
         
         .button:hover {
             background: #45a049;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
         
         .button:disabled {
             background: #cccccc;
             cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
         }
         
         .fixation {
@@ -86,6 +105,10 @@
             right: 10px;
             font-size: 14px;
             color: #666;
+            background: #f9f9f9;
+            padding: 5px 10px;
+            border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         
         .nav-type-header {
@@ -94,18 +117,31 @@
             font-weight: bold;
             color: white;
             font-size: 20px;
+            border-radius: 8px;
+            animation: slideIn 0.4s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
         
         .egocentric-header {
-            background: #4CAF50;
+            background: linear-gradient(135deg, #4CAF50, #45a049);
         }
         
         .allocentric-header {
-            background: #9C27B0;
+            background: linear-gradient(135deg, #9C27B0, #8E24AA);
         }
         
         .control-header {
-            background: #FF9800;
+            background: linear-gradient(135deg, #FF9800, #F57C00);
         }
         
         input[type="text"], input[type="number"], select {
@@ -157,6 +193,25 @@
         .loading {
             color: #999;
             font-style: italic;
+        }
+        
+        /* Add smooth transition effect */
+        .transition-screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .transition-screen.active {
+            opacity: 1;
+            pointer-events: all;
         }
     </style>
 </head>
@@ -233,6 +288,11 @@
             <button class="button" id="continue-button" onclick="nextTrial()">Continue</button>
             <button class="button" id="download-data" onclick="downloadData()">Download Data</button>
         </div>
+        
+        <!-- Transition Screen (for smooth transitions) -->
+        <div class="transition-screen" id="transition-screen">
+            <div class="transition-content"></div>
+        </div>
     </div>
 
     <script>
@@ -251,10 +311,9 @@
             'HNS': 'Hearing individuals who do not know sign language'
         };
 
-        // Function to get next participant number - uses localStorage for tracking
+        // Function to get next participant number
         async function getNextParticipantNumber(groupCode) {
             try {
-                // Try to query Google Sheets for the next ID
                 const response = await fetch(GOOGLE_SHEET_URL, {
                     method: 'POST',
                     mode: 'no-cors',
@@ -267,8 +326,6 @@
                     })
                 });
                 
-                // Since no-cors mode, we can't read the response
-                // So we'll use localStorage as a fallback to track IDs locally
                 const storageKey = `lastId_${groupCode}`;
                 let lastNumber = parseInt(localStorage.getItem(storageKey) || '0');
                 lastNumber++;
@@ -278,7 +335,6 @@
                 
             } catch (error) {
                 console.error('Error getting next participant number:', error);
-                // Fallback to timestamp-based ID
                 const timestamp = Date.now();
                 const number = (timestamp % 1000).toString().padStart(3, '0');
                 return number;
@@ -294,23 +350,16 @@
             const groupDesc = document.getElementById('group-desc');
             
             if (groupSelect.value) {
-                // Show group description
                 groupDesc.textContent = groupDescriptions[groupSelect.value];
-                
-                // Show loading state
                 idDisplay.style.display = 'block';
                 generatedIdSpan.textContent = 'Generating...';
                 generatedIdSpan.className = 'loading';
                 startButton.disabled = true;
                 startButton.textContent = 'Generating ID...';
                 
-                // Get next number for this group
                 const nextNumber = await getNextParticipantNumber(groupSelect.value);
-                
-                // Generate the ID
                 generatedParticipantID = `${groupSelect.value}-online-${nextNumber}`;
                 
-                // Update display
                 generatedIdSpan.textContent = generatedParticipantID;
                 generatedIdSpan.className = '';
                 startButton.disabled = false;
@@ -327,10 +376,8 @@
         // Function to save data to Google Sheets
         async function saveToGoogleSheet(trialData) {
             try {
-                // Add user agent for browser info
                 trialData.user_agent = navigator.userAgent;
                 
-                // Send to Google Sheets
                 const response = await fetch(GOOGLE_SHEET_URL, {
                     method: 'POST',
                     mode: 'no-cors',
@@ -372,11 +419,11 @@
         // Experiment configuration
         const config = {
             trialsPerBlock: 15,
-            maxResponseTime: 3000, // ms
-            feedbackDuration: 500, // ms
-            fixationDuration: 800, // ms
+            maxResponseTime: 3000,
+            feedbackDuration: 500,
+            fixationDuration: 800,
             practiceTrials: 4,
-            blocks: [] // Will be populated based on counterbalancing
+            blocks: []
         };
 
         // Experiment state
@@ -388,12 +435,121 @@
             allData: [],
             trialStartTime: null,
             stimulusOnsetTime: null,
-            isPractice: false
+            isPractice: false,
+            currentBlockTrials: [],  // Store randomized trials for current block
+            blockTrialOrder: {}      // Store trial order for each block
         };
+
+        // Seeded random number generator for reproducible randomization
+        class SeededRandom {
+            constructor(seed) {
+                this.seed = seed;
+            }
+            
+            // Simple linear congruential generator
+            random() {
+                this.seed = (this.seed * 1664525 + 1013904223) % 2147483647;
+                return this.seed / 2147483647;
+            }
+            
+            // Random integer between min (inclusive) and max (exclusive)
+            randInt(min, max) {
+                return Math.floor(this.random() * (max - min)) + min;
+            }
+        }
+
+        // Fisher-Yates shuffle with optional seeded random
+        function shuffleArray(array, rng = null) {
+            const shuffled = [...array];
+            for (let i = shuffled.length - 1; i > 0; i--) {
+                const j = rng ? rng.randInt(0, i + 1) : Math.floor(Math.random() * (i + 1));
+                [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+            }
+            return shuffled;
+        }
+
+        // Create a seed from participant ID (matching Python version logic)
+        function createSeedFromParticipantId(participantId) {
+            // Try to extract number from ID
+            const matches = participantId.match(/\d+/);
+            if (matches) {
+                return parseInt(matches[0]);
+            }
+            // If no number, create seed from character codes
+            let seed = 0;
+            for (let i = 0; i < participantId.length; i++) {
+                seed += participantId.charCodeAt(i);
+            }
+            return seed;
+        }
+
+        // Prepare randomized trials for a block with participant-specific randomization
+        function prepareBlockTrials(stimuli, trialsPerBlock, blockNum = 0, participantId = null) {
+            let trials = [];
+            let rng = null;
+            
+            // Create participant-specific random number generator if ID provided
+            if (participantId) {
+                const baseSeed = createSeedFromParticipantId(participantId);
+                // Add block number to seed so each block gets different randomization
+                const blockSeed = baseSeed + (blockNum * 1000);
+                rng = new SeededRandom(blockSeed);
+                console.log(`Using seeded randomization for participant ${participantId}, block ${blockNum}`);
+            }
+            
+            // If we have more stimuli than needed, randomly select a subset
+            if (stimuli.length >= trialsPerBlock) {
+                // Create indices array
+                const indices = Array.from({length: stimuli.length}, (_, i) => i);
+                
+                // Shuffle indices
+                const shuffledIndices = shuffleArray(indices, rng);
+                
+                // Select first trialsPerBlock indices
+                const selectedIndices = shuffledIndices.slice(0, trialsPerBlock);
+                
+                // Get corresponding stimuli
+                trials = selectedIndices.map(i => stimuli[i]);
+                
+                console.log(`Selected ${trialsPerBlock} stimuli from ${stimuli.length} available`);
+            } else {
+                // If we have fewer stimuli than trials, need to repeat
+                console.log(`Repeating ${stimuli.length} stimuli to fill ${trialsPerBlock} trials`);
+                
+                // First shuffle the original stimuli
+                const shuffledOriginal = shuffleArray(stimuli, rng);
+                
+                // Calculate repetitions needed
+                const fullCycles = Math.floor(trialsPerBlock / stimuli.length);
+                const remainder = trialsPerBlock % stimuli.length;
+                
+                // Add full cycles with reshuffling each time
+                for (let i = 0; i < fullCycles; i++) {
+                    // Reshuffle for each cycle to avoid predictable patterns
+                    trials = trials.concat(shuffleArray(stimuli, rng));
+                }
+                
+                // Add remainder
+                if (remainder > 0) {
+                    const shuffled = shuffleArray(stimuli, rng);
+                    trials = trials.concat(shuffled.slice(0, remainder));
+                }
+            }
+            
+            // Multiple shuffle passes for maximum randomization (matching Python version)
+            for (let pass = 0; pass < 3; pass++) {
+                trials = shuffleArray(trials, rng);
+            }
+            
+            // Log first few stimulus IDs for verification
+            const firstFewIds = trials.slice(0, 5).map(t => t.id).join(', ');
+            console.log(`Final randomized order (first 5): ${firstFewIds}`);
+            
+            return trials;
+        }
 
         // Generate block sequence based on counterbalancing
         function generateBlockSequence(participantId) {
-            // Extract number from ID for counterbalancing
             const matches = participantId.match(/\d+/);
             const number = matches ? parseInt(matches[0]) : 0;
             const cb = (number % 4) + 1;
@@ -408,16 +564,39 @@
             const sequence = latinSquare[cb - 1];
             const blocks = [];
             
-            // Add each condition twice
             sequence.forEach(([navType, difficulty]) => {
                 blocks.push({ navType, difficulty });
                 blocks.push({ navType, difficulty });
             });
             
-            // Add control block
             blocks.splice(4, 0, { navType: 'control', difficulty: 'control' });
             
             return blocks;
+        }
+
+        // Smooth screen transition helper
+        function transitionScreen(fromScreen, toScreen, duration = 300) {
+            if (fromScreen) {
+                fromScreen.style.opacity = '0';
+                setTimeout(() => {
+                    fromScreen.classList.remove('active');
+                    if (toScreen) {
+                        toScreen.classList.add('active');
+                        toScreen.classList.add('fade-in');
+                        setTimeout(() => {
+                            toScreen.style.opacity = '1';
+                            toScreen.classList.remove('fade-in');
+                        }, 10);
+                    }
+                }, duration);
+            } else if (toScreen) {
+                toScreen.classList.add('active');
+                toScreen.classList.add('fade-in');
+                setTimeout(() => {
+                    toScreen.style.opacity = '1';
+                    toScreen.classList.remove('fade-in');
+                }, 10);
+            }
         }
 
         // Start experiment
@@ -427,7 +606,6 @@
                 return;
             }
             
-            // Validate required fields
             const age = document.getElementById('age').value;
             const gender = document.getElementById('gender').value;
             const handedness = document.getElementById('handedness').value;
@@ -437,7 +615,27 @@
                 return;
             }
             
-            // Collect participant info
+            // Validate that we have stimuli loaded
+            if (!window.stimulusMapping) {
+                alert('Error: Stimulus mappings not loaded. Please refresh the page.');
+                return;
+            }
+            
+            // Check that we have stimuli for all required conditions
+            const requiredConditions = ['easy', 'hard', 'control'];
+            for (const condition of requiredConditions) {
+                if (!stimulusMapping[condition] || stimulusMapping[condition].length === 0) {
+                    alert(`Error: No stimuli found for ${condition} condition. Please contact the experimenter.`);
+                    console.error(`Missing stimuli for ${condition} condition`);
+                    return;
+                }
+            }
+            
+            console.log('Stimulus availability check:');
+            console.log(`Easy: ${stimulusMapping.easy.length} stimuli`);
+            console.log(`Hard: ${stimulusMapping.hard.length} stimuli`);
+            console.log(`Control: ${stimulusMapping.control.length} stimuli`);
+            
             state.participantInfo = {
                 id: generatedParticipantID,
                 group: document.getElementById('participant-group').value,
@@ -447,14 +645,52 @@
                 timestamp: new Date().toISOString()
             };
             
-            // Generate block sequence
             config.blocks = generateBlockSequence(state.participantInfo.id);
             
-            // Start with practice
+            // Pre-randomize all blocks with participant-specific seeding
+            console.log('Pre-randomizing all blocks with participant-specific seeding...');
+            
+            // Track stimuli order for repeated conditions to verify different randomization
+            const conditionOrders = {};
+            
+            config.blocks.forEach((block, idx) => {
+                const stimuli = stimulusMapping[block.difficulty];
+                // Pass participant ID and block number for reproducible randomization
+                const randomizedTrials = prepareBlockTrials(
+                    stimuli, 
+                    config.trialsPerBlock, 
+                    idx + 1, // Block number (1-indexed)
+                    state.participantInfo.id
+                );
+                state.blockTrialOrder[idx] = randomizedTrials;
+                
+                // Track order for verification
+                const conditionKey = `${block.navType}_${block.difficulty}`;
+                if (!conditionOrders[conditionKey]) {
+                    conditionOrders[conditionKey] = [];
+                }
+                const firstFiveIds = randomizedTrials.slice(0, 5).map(t => t.id).join(',');
+                conditionOrders[conditionKey].push(firstFiveIds);
+                
+                console.log(`Block ${idx + 1}: ${block.navType}/${block.difficulty} - ${randomizedTrials.length} trials prepared`);
+            });
+            
+            // Verify that repeated conditions have different randomization
+            console.log('Verifying randomization for repeated conditions:');
+            for (const [condition, orders] of Object.entries(conditionOrders)) {
+                if (orders.length > 1) {
+                    const allDifferent = orders.every((order, i) => 
+                        orders.slice(i + 1).every(otherOrder => order !== otherOrder)
+                    );
+                    console.log(`${condition}: ${allDifferent ? '✓ Different randomization' : '✗ Same randomization'} across ${orders.length} blocks`);
+                }
+            }
+            
             state.isPractice = true;
             showPracticeInstructions();
             
-            document.getElementById('data-entry-screen').classList.remove('active');
+            const dataEntry = document.getElementById('data-entry-screen');
+            transitionScreen(dataEntry, null);
         }
 
         // Show practice instructions
@@ -472,7 +708,7 @@
                 <p>Press Continue to start practice trials.</p>
             `;
             
-            instructionScreen.classList.add('active');
+            transitionScreen(null, instructionScreen);
         }
 
         // Show instructions for current block
@@ -482,12 +718,10 @@
             const instructionText = document.getElementById('instruction-text');
             const navIndicator = document.getElementById('nav-type-indicator');
             
-            // Set navigation type header
             navIndicator.className = `nav-type-header ${block.navType}-header`;
             navIndicator.textContent = block.navType === 'egocentric' ? 'PLAYER VIEW' : 
                                       block.navType === 'allocentric' ? 'MAP VIEW' : 'ARROW FOLLOWING';
             
-            // Set instruction text
             const instructions = {
                 egocentric: `Navigate from the gray player to the red stop sign.<br><br>
                             Use arrow keys as if YOU are the player:<br>
@@ -506,23 +740,45 @@
             };
             
             instructionText.innerHTML = instructions[block.navType];
-            instructionScreen.classList.add('active');
+            transitionScreen(null, instructionScreen);
             
-            // Update progress
             updateProgress();
         }
 
         // Start current block
         function startBlock() {
-            document.getElementById('instruction-screen').classList.remove('active');
+            const instructionScreen = document.getElementById('instruction-screen');
+            transitionScreen(instructionScreen, null);
             
             if (state.isPractice) {
                 state.currentTrial = 0;
                 state.blockData = [];
+                // Select enough practice stimuli
+                const numPracticeStimuli = Math.min(stimulusMapping.easy.length, config.practiceTrials);
+                const practiceStimuli = stimulusMapping.easy.slice(0, numPracticeStimuli);
+                // Use block number 0 for practice, no need to shuffle if we need all 4 trials
+                if (numPracticeStimuli === config.practiceTrials) {
+                    // Just use the first 4 stimuli in order for consistent practice experience
+                    state.currentBlockTrials = practiceStimuli;
+                } else {
+                    // Randomize if we have more stimuli than needed
+                    state.currentBlockTrials = prepareBlockTrials(
+                        practiceStimuli, 
+                        config.practiceTrials, 
+                        0, // Practice block
+                        state.participantInfo.id
+                    );
+                }
+                console.log(`Practice trials prepared: ${state.currentBlockTrials.length} stimuli`);
                 runPracticeTrial();
             } else {
                 state.currentTrial = 0;
                 state.blockData = [];
+                // Use pre-randomized trials for this block
+                state.currentBlockTrials = state.blockTrialOrder[state.currentBlock];
+                console.log(`Starting block ${state.currentBlock + 1} (${config.blocks[state.currentBlock].navType}/${config.blocks[state.currentBlock].difficulty})`);
+                console.log(`Block has ${state.currentBlockTrials.length} randomized trials`);
+                console.log(`First 3 stimuli: ${state.currentBlockTrials.slice(0, 3).map(s => s.id).join(', ')}`);
                 nextTrial();
             }
         }
@@ -537,8 +793,17 @@
             }
             
             const navType = state.currentTrial < 2 ? 'egocentric' : 'allocentric';
-            const stimuli = stimulusMapping.easy;
-            const stimulus = stimuli[state.currentTrial % stimuli.length];
+            
+            // Failsafe check for practice trials
+            if (!state.currentBlockTrials || state.currentTrial >= state.currentBlockTrials.length) {
+                console.error(`Practice trial ${state.currentTrial} out of bounds`);
+                state.isPractice = false;
+                state.currentBlock = 0;
+                showBlockInstructions();
+                return;
+            }
+            
+            const stimulus = state.currentBlockTrials[state.currentTrial];
             
             presentStimulus(stimulus, navType, 'practice');
         }
@@ -551,7 +816,8 @@
             
             fixation.style.display = 'block';
             stimulusImage.style.display = 'none';
-            stimulusScreen.classList.add('active');
+            
+            transitionScreen(null, stimulusScreen);
             
             setTimeout(() => {
                 fixation.style.display = 'none';
@@ -595,14 +861,12 @@
             let correct, accuracy, stimulus_id;
             if (state.isPractice) {
                 const navType = state.currentTrial < 2 ? 'egocentric' : 'allocentric';
-                const stimuli = stimulusMapping.easy;
-                const stimulus = stimuli[state.currentTrial % stimuli.length];
+                const stimulus = state.currentBlockTrials[state.currentTrial];
                 correct = navType === 'egocentric' ? stimulus.egocentric_correct : stimulus.allocentric_correct;
                 stimulus_id = stimulus.id;
             } else {
                 const block = config.blocks[state.currentBlock];
-                const stimuli = stimulusMapping[block.difficulty];
-                const stimulus = stimuli[state.currentTrial % stimuli.length];
+                const stimulus = state.currentBlockTrials[state.currentTrial];
                 correct = block.navType === 'egocentric' ? stimulus.egocentric_correct : stimulus.allocentric_correct;
                 stimulus_id = stimulus.id;
             }
@@ -630,7 +894,6 @@
             
             state.blockData.push(trialData);
             
-            // Save to Google Sheets
             saveToGoogleSheet(trialData);
             
             showFeedback(accuracy);
@@ -638,7 +901,7 @@
 
         // Show feedback
         function showFeedback(accuracy) {
-            document.getElementById('stimulus-screen').classList.remove('active');
+            const stimulusScreen = document.getElementById('stimulus-screen');
             
             if (state.isPractice) {
                 const feedbackScreen = document.getElementById('feedback-screen');
@@ -647,14 +910,15 @@
                 feedbackText.textContent = accuracy ? 'Correct!' : 'Incorrect';
                 feedbackText.style.color = accuracy ? 'green' : 'red';
                 
-                feedbackScreen.classList.add('active');
+                transitionScreen(stimulusScreen, feedbackScreen);
                 
                 setTimeout(() => {
-                    feedbackScreen.classList.remove('active');
+                    transitionScreen(feedbackScreen, null);
                     state.currentTrial++;
                     runPracticeTrial();
                 }, 1500);
             } else {
+                transitionScreen(stimulusScreen, null);
                 setTimeout(() => {
                     nextTrial();
                 }, config.feedbackDuration);
@@ -676,8 +940,22 @@
                 }
             } else {
                 const block = config.blocks[state.currentBlock];
-                const stimuli = stimulusMapping[block.difficulty];
-                const stimulus = stimuli[state.currentTrial % stimuli.length];
+                
+                // Failsafe check to ensure we have trials
+                if (!state.currentBlockTrials || state.currentTrial >= state.currentBlockTrials.length) {
+                    console.error(`Trial index ${state.currentTrial} out of bounds for block ${state.currentBlock}`);
+                    console.error(`Block trials available: ${state.currentBlockTrials ? state.currentBlockTrials.length : 0}`);
+                    // Try to recover by moving to next block
+                    state.currentBlock++;
+                    if (state.currentBlock >= config.blocks.length) {
+                        showCompletion();
+                    } else {
+                        showBlockInstructions();
+                    }
+                    return;
+                }
+                
+                const stimulus = state.currentBlockTrials[state.currentTrial];
                 
                 presentStimulus(stimulus, block.navType, block.difficulty);
             }
@@ -718,7 +996,8 @@
             
             continueButton.style.display = 'none';
             downloadButton.style.display = 'inline-block';
-            feedbackScreen.classList.add('active');
+            
+            transitionScreen(null, feedbackScreen);
         }
 
         // Download data as CSV
