@@ -729,7 +729,8 @@
       const progress = document.getElementById('progress');
       const totalBlocks = config.blocks.length || 0;
       const currentBlock = Math.min(state.currentBlock + 1, totalBlocks || 1);
-      const trialNum = Math.min(state.currentTrial, config.trialsPerBlock);
+      // Display trials using 1-based indexing so the first trial shows as 1
+      const trialNum = Math.min(state.currentTrial + 1, config.trialsPerBlock);
       progress.textContent = `Block ${currentBlock}/${totalBlocks} | Trial ${trialNum}/${config.trialsPerBlock}`;
     }
 
