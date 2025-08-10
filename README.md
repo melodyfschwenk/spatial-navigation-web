@@ -22,7 +22,7 @@ Participants view maze stimuli and must indicate the first step needed to reach 
 ## File Structure
 
 ```
-spatial_navigation_online/
+spatial-navigation-web/
 ├── webversion.html          # Main experiment file
 ├── stimulus_mappings.js     # Stimulus-response mappings
 ├── stimuli/                 # Stimulus images (78 PNG files)
