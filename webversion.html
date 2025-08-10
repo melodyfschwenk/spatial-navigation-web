@@ -256,8 +256,15 @@
     // Instant local ID, background sync to Sheets
     function nextIdLocal(groupCode) {
       const key = `lastId_${groupCode}`;
-      const n = (parseInt(localStorage.getItem(key) || '0', 10) + 1);
-      localStorage.setItem(key, String(n));
+      let n = 0;
+      try {
+        n = parseInt(localStorage.getItem(key) || '0', 10) + 1;
+        localStorage.setItem(key, String(n));
+      } catch (e) {
+        if (!nextIdLocal.memory) nextIdLocal.memory = {};
+        n = (nextIdLocal.memory[groupCode] || 0) + 1;
+        nextIdLocal.memory[groupCode] = n;
+      }
       return String(n).padStart(3, '0');
     }
     function syncIdToSheets(groupCode, fullId) {
