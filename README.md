@@ -6,7 +6,7 @@ A web-based implementation of a spatial navigation task for behavioral research,
 
 This experiment tests spatial navigation abilities using two different reference frames:
 - **Egocentric (Player View)**: Navigate from the player's perspective
-- **Allocentric (Map View)**: Navigate using absolute map directions
+- **Allocentric (Map View)**: Navigate using absolute map directions 
 - **Control**: Simple arrow-following task
 
 Participants view maze stimuli and must indicate the first step needed to reach a target location, responding with arrow keys within 3 seconds.
