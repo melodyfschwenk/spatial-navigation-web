@@ -283,56 +283,62 @@
     }
 
     // Participant ID helpers
-    async function getNextParticipantNumber(groupCode) {
-      try {
-        await fetch(GOOGLE_SHEET_URL, {
-          method: 'POST',
-          mode: 'no-cors',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'getNextId', groupCode })
-        });
-        const storageKey = `lastId_${groupCode}`;
-        let lastNumber = parseInt(localStorage.getItem(storageKey) || '0', 10);
-        lastNumber++;
-        localStorage.setItem(storageKey, String(lastNumber));
-        return String(lastNumber).padStart(3, '0');
-      } catch (e) {
-        console.error('Error getting next participant number:', e);
-        const number = String(Date.now() % 1000).padStart(3, '0');
-        return number;
-      }
-    }
+    // Make ID assignment instant and local, then sync to Sheets in the background
+function nextIdLocal(groupCode) {
+  const key = `lastId_${groupCode}`;
+  const n = (parseInt(localStorage.getItem(key) || '0', 10) + 1);
+  localStorage.setItem(key, String(n));
+  return String(n).padStart(3, '0');
+}
 
-    async function updateParticipantID() {
-      const groupSelect = document.getElementById('participant-group');
-      const idDisplay = document.getElementById('participant-id-display');
-      const generatedIdSpan = document.getElementById('generated-id');
-      const startButton = document.getElementById('start-button');
-      const groupDesc = document.getElementById('group-desc');
+function syncIdToSheets(groupCode, fullId) {
+  // Fire and forget, never awaited
+  try {
+    fetch(GOOGLE_SHEET_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, // avoids preflight
+      mode: 'no-cors',
+      body: JSON.stringify({ action: 'reserveId', groupCode, id: fullId })
+    }).catch(() => {});
+  } catch (_) {}
+}
 
-      if (groupSelect.value) {
-        groupDesc.textContent = groupDescriptions[groupSelect.value];
-        idDisplay.style.display = 'block';
-        generatedIdSpan.textContent = 'Generating...';
-        generatedIdSpan.className = 'loading';
-        startButton.disabled = true;
-        startButton.textContent = 'Generating ID...';
+async function updateParticipantID() {
+  const groupSelect = document.getElementById('participant-group');
+  const idDisplay = document.getElementById('participant-id-display');
+  const generatedIdSpan = document.getElementById('generated-id');
+  const startButton = document.getElementById('start-button');
+  const groupDesc = document.getElementById('group-desc');
 
-        const nextNumber = await getNextParticipantNumber(groupSelect.value);
-        generatedParticipantID = `${groupSelect.value}-online-${nextNumber}`;
+  if (!groupSelect.value) {
+    idDisplay.style.display = 'none';
+    startButton.disabled = true;
+    startButton.textContent = 'Please select your group first';
+    groupDesc.textContent = '';
+    generatedParticipantID = null;
+    return;
+  }
 
-        generatedIdSpan.textContent = generatedParticipantID;
-        generatedIdSpan.className = '';
-        startButton.disabled = false;
-        startButton.textContent = 'Start Experiment';
-      } else {
-        idDisplay.style.display = 'none';
-        startButton.disabled = true;
-        startButton.textContent = 'Please select your group first';
-        groupDesc.textContent = '';
-        generatedParticipantID = null;
-      }
-    }
+  groupDesc.textContent = groupDescriptions[groupSelect.value];
+  idDisplay.style.display = 'block';
+  generatedIdSpan.textContent = 'Generating...';
+  generatedIdSpan.className = 'loading';
+  startButton.disabled = true;
+  startButton.textContent = 'Generating ID...';
+
+  // Instant local ID
+  const num = nextIdLocal(groupSelect.value);
+  generatedParticipantID = `${groupSelect.value}-online-${num}`;
+
+  // Show it and unlock Start immediately
+  generatedIdSpan.textContent = generatedParticipantID;
+  generatedIdSpan.className = '';
+  startButton.disabled = false;
+  startButton.textContent = 'Start Experiment';
+
+  // Background best-effort sync to Google Sheets
+  syncIdToSheets(groupSelect.value, generatedParticipantID);
+}
 
     // Save to Google Sheet
     async function saveToGoogleSheet(trialData) {
@@ -785,19 +791,18 @@
 
     // Initial check
     window.addEventListener('load', function() {
-      if (typeof stimulusMapping === 'undefined') {
-        console.error('ERROR: stimulusMapping is undefined after page load');
-        const startBtn = document.getElementById('start-button');
-        startBtn.textContent = 'Error: Stimulus data not loaded';
-        startBtn.disabled = true;
-      } else {
-        console.log('✓ Stimulus mappings loaded successfully:');
-        console.log(`  - Easy: ${stimulusMapping.easy ? stimulusMapping.easy.length : 0} stimuli`);
-        console.log(`  - Hard: ${stimulusMapping.hard ? stimulusMapping.hard.length : 0} stimuli`);
-        console.log(`  - Control: ${stimulusMapping.control ? stimulusMapping.control.length : 0} stimuli`);
-        console.log(`  - Total: ${(stimulusMapping.easy ? stimulusMapping.easy.length : 0) + (stimulusMapping.hard ? stimulusMapping.hard.length : 0) + (stimulusMapping.control ? stimulusMapping.control.length : 0)} stimuli`);
-      }
+  if (typeof stimulusMapping === 'undefined') {
+    console.warn('stimulusMapping not found yet. You can still assign ID. The Start button will validate before running.');
+    // Do not disable the Start button here
+  } else {
+    console.log('✓ Stimulus mappings loaded:', {
+      easy: stimulusMapping.easy?.length || 0,
+      hard: stimulusMapping.hard?.length || 0,
+      control: stimulusMapping.control?.length || 0
     });
+  }
+});
   </script>
 </body>
 </html>
+
