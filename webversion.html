@@ -5,6 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spatial Navigation Task</title>
     <script src="stimulus_mappings.js"></script>
+    <script>
+        // Wait for DOM to be ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if stimulus mappings loaded
+            if (typeof stimulusMapping === 'undefined') {
+                console.error('ERROR: stimulus_mappings.js failed to load or stimulusMapping variable is not defined');
+                alert('Error loading experiment resources. Please refresh the page.');
+            } else {
+                console.log('Stimulus mappings loaded successfully:');
+                console.log(`- Easy: ${stimulusMapping.easy ? stimulusMapping.easy.length : 0} stimuli`);
+                console.log(`- Hard: ${stimulusMapping.hard ? stimulusMapping.hard.length : 0} stimuli`);
+                console.log(`- Control: ${stimulusMapping.control ? stimulusMapping.control.length : 0} stimuli`);
+            }
+        });
+    </script>
     <style>
         body {
             margin: 0;
@@ -296,6 +311,20 @@
     </div>
 
     <script>
+        // Wait for DOM to be ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check if stimulus mappings loaded
+            if (typeof stimulusMapping === 'undefined') {
+                console.error('ERROR: stimulus_mappings.js failed to load or stimulusMapping variable is not defined');
+                alert('Error loading experiment resources. Please refresh the page.');
+            } else {
+                console.log('Stimulus mappings loaded successfully:');
+                console.log(`- Easy: ${stimulusMapping.easy ? stimulusMapping.easy.length : 0} stimuli`);
+                console.log(`- Hard: ${stimulusMapping.hard ? stimulusMapping.hard.length : 0} stimuli`);
+                console.log(`- Control: ${stimulusMapping.control ? stimulusMapping.control.length : 0} stimuli`);
+            }
+        });
+
         // Google Sheets URL - Your actual URL
         const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbzw_gLBsA5hY1dU7xZ1Fp67FptHEC9veo95vyId0bBOfu_QLMNFm02Rg0iRzURzx2Cn/exec';
         
@@ -616,22 +645,34 @@
             }
             
             // Validate that we have stimuli loaded
-            if (!window.stimulusMapping) {
+            if (typeof stimulusMapping === 'undefined') {
                 alert('Error: Stimulus mappings not loaded. Please refresh the page.');
+                console.error('stimulusMapping is undefined');
                 return;
             }
             
             // Check that we have stimuli for all required conditions
             const requiredConditions = ['easy', 'hard', 'control'];
+            let missingConditions = [];
+            
             for (const condition of requiredConditions) {
-                if (!stimulusMapping[condition] || stimulusMapping[condition].length === 0) {
-                    alert(`Error: No stimuli found for ${condition} condition. Please contact the experimenter.`);
-                    console.error(`Missing stimuli for ${condition} condition`);
-                    return;
+                if (!stimulusMapping[condition]) {
+                    missingConditions.push(condition);
+                    console.error(`Missing condition: ${condition}`);
+                } else if (stimulusMapping[condition].length === 0) {
+                    missingConditions.push(`${condition} (empty)`);
+                    console.error(`Empty stimuli array for ${condition}`);
+                } else {
+                    console.log(`${condition}: ${stimulusMapping[condition].length} stimuli loaded`);
                 }
             }
             
-            console.log('Stimulus availability check:');
+            if (missingConditions.length > 0) {
+                alert(`Error: Missing stimulus data for conditions: ${missingConditions.join(', ')}. Please contact the experimenter.`);
+                return;
+            }
+            
+            console.log('Stimulus availability check passed:');
             console.log(`Easy: ${stimulusMapping.easy.length} stimuli`);
             console.log(`Hard: ${stimulusMapping.hard.length} stimuli`);
             console.log(`Control: ${stimulusMapping.control.length} stimuli`);
@@ -655,6 +696,12 @@
             
             config.blocks.forEach((block, idx) => {
                 const stimuli = stimulusMapping[block.difficulty];
+                if (!stimuli || stimuli.length === 0) {
+                    console.error(`No stimuli available for block ${idx + 1}: ${block.navType}/${block.difficulty}`);
+                    alert(`Error preparing block ${idx + 1}. Please refresh and try again.`);
+                    return;
+                }
+                
                 // Pass participant ID and block number for reproducible randomization
                 const randomizedTrials = prepareBlockTrials(
                     stimuli, 
@@ -669,7 +716,7 @@
                 if (!conditionOrders[conditionKey]) {
                     conditionOrders[conditionKey] = [];
                 }
-                const firstFiveIds = randomizedTrials.slice(0, 5).map(t => t.id).join(',');
+                const firstFiveIds = randomizedTrials.slice(0, Math.min(5, randomizedTrials.length)).map(t => t.id).join(',');
                 conditionOrders[conditionKey].push(firstFiveIds);
                 
                 console.log(`Block ${idx + 1}: ${block.navType}/${block.difficulty} - ${randomizedTrials.length} trials prepared`);
