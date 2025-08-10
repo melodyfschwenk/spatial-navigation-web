@@ -253,11 +253,18 @@
       'HNS': 'Hearing individuals who do not know sign language'
     };
 
-    // Instant local ID, background sync to Sheets
+    // Instant local ID generation with graceful fallback if localStorage is unavailable
     function nextIdLocal(groupCode) {
       const key = `lastId_${groupCode}`;
-      const n = (parseInt(localStorage.getItem(key) || '0', 10) + 1);
-      localStorage.setItem(key, String(n));
+      let n = 1;
+      try {
+        n = (parseInt(localStorage.getItem(key) || '0', 10) + 1);
+        localStorage.setItem(key, String(n));
+      } catch (e) {
+        // localStorage might be unavailable (e.g., in Safari private mode)
+        // fall back to a pseudo-random ID so the experiment can still proceed
+        n = Math.floor(Math.random() * 1000);
+      }
       return String(n).padStart(3, '0');
     }
     function syncIdToSheets(groupCode, fullId) {
