@@ -243,6 +243,21 @@
       blockData: []
     };
 
+  // Helper to notify parent window if embedded
+function notifyParentIfEmbedded(message) {
+  if (window !== window.top) {
+    // We're in an iframe
+    try {
+      window.parent.postMessage({
+        type: 'task-complete',
+        taskCode: 'SN',
+        ...message
+      }, '*');
+    } catch(e) {
+      console.log('Could not communicate with parent:', e);
+    }
+  }
+}
     /********* INSTRUCTIONS *********/
     const INSTRUCTIONS = {
       full: {
@@ -879,4 +894,5 @@ UP / DOWN / LEFT / RIGHT
   </script>
 </body>
 </html>
+
 
