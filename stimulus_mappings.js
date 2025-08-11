@@ -74,15 +74,15 @@ const stimulusMapping = {
         { id: "hard_032", file: "stimuli/hard/32.png", egocentric_correct: "down", allocentric_correct: "right" }
     ],
     control: [
-        { id: "control_01", file: "stimuli/control/1.png", egocentric_correct: "right", allocentric_correct: "right" },
-        { id: "control_02", file: "stimuli/control/2.png", egocentric_correct: "up", allocentric_correct: "up" },
-        { id: "control_03", file: "stimuli/control/3.png", egocentric_correct: "down", allocentric_correct: "down" },
-        { id: "control_04", file: "stimuli/control/4.png", egocentric_correct: "left", allocentric_correct: "left" },
-        { id: "control_05", file: "stimuli/control/5.png", egocentric_correct: "left", allocentric_correct: "left" },
-        { id: "control_06", file: "stimuli/control/6.png", egocentric_correct: "up", allocentric_correct: "up" },
-        { id: "control_07", file: "stimuli/control/7.png", egocentric_correct: "right", allocentric_correct: "right" },
-        { id: "control_08", file: "stimuli/control/8.png", egocentric_correct: "up", allocentric_correct: "up" },
-        { id: "control_09", file: "stimuli/control/9.png", egocentric_correct: "left", allocentric_correct: "left" },
+        { id: "control_001", file: "stimuli/control/1.png", egocentric_correct: "right", allocentric_correct: "right" },
+        { id: "control_002", file: "stimuli/control/2.png", egocentric_correct: "up", allocentric_correct: "up" },
+        { id: "control_003", file: "stimuli/control/3.png", egocentric_correct: "down", allocentric_correct: "down" },
+        { id: "control_004", file: "stimuli/control/4.png", egocentric_correct: "left", allocentric_correct: "left" },
+        { id: "control_005", file: "stimuli/control/5.png", egocentric_correct: "left", allocentric_correct: "left" },
+        { id: "control_006", file: "stimuli/control/6.png", egocentric_correct: "up", allocentric_correct: "up" },
+        { id: "control_007", file: "stimuli/control/7.png", egocentric_correct: "right", allocentric_correct: "right" },
+        { id: "control_008", file: "stimuli/control/8.png", egocentric_correct: "up", allocentric_correct: "up" },
+        { id: "control_009", file: "stimuli/control/9.png", egocentric_correct: "left", allocentric_correct: "left" },
         { id: "control_010", file: "stimuli/control/10.png", egocentric_correct: "down", allocentric_correct: "down" }
     ]
 };
