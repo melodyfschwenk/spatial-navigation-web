@@ -195,6 +195,9 @@
       HNS: 'Hearing individuals who do not know sign language'
     };
 
+    // Detect mobile/touch devices to conditionally show on-screen controls
+    const isMobile = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
     // Block plan mirrors your Python/earlier JS
     const config = {
       trialsPerBlock: 15,
@@ -618,32 +621,34 @@ UP / DOWN / LEFT / RIGHT
       updateProgress();
     }
 
-    /********* PRESENT & RESPOND *********/
-    function presentStimulus(stimulus, navType, difficulty){
-      state.currentStimulus = stimulus;
-      state.currentNavType = navType;
-      state.currentDifficulty = difficulty;
+      /********* PRESENT & RESPOND *********/
+      function presentStimulus(stimulus, navType, difficulty){
+        state.currentStimulus = stimulus;
+        state.currentNavType = navType;
+        state.currentDifficulty = difficulty;
 
-      if (state.isPractice) setPracticeBadgeAndLegend(navType);
+        if (state.isPractice) setPracticeBadgeAndLegend(navType);
 
-      const img = document.getElementById('stimulus-image');
-      const fix = document.getElementById('fixation');
-      const dpad = document.getElementById('touch-controls');
+        const img = document.getElementById('stimulus-image');
+        const fix = document.getElementById('fixation');
+        const dpad = document.getElementById('touch-controls');
 
-      window.focus();
-      img.style.display = 'none';
-      fix.style.display = 'block';
-      dpad.style.display = 'none';
-      showScreen('stimulus-screen');
+        window.focus();
+        img.style.display = 'none';
+        fix.style.display = 'block';
+        dpad.style.display = 'none';
+        showScreen('stimulus-screen');
 
-      setTimeout(()=> {
-        fix.style.display = 'none';
-        img.src = stimulus.file;
-        img.style.display = 'block';
-        state.stimulusOnsetTime = performance.now();
-        dpad.style.display = 'block';
+        setTimeout(()=> {
+          fix.style.display = 'none';
+          img.src = stimulus.file;
+          img.style.display = 'block';
+          state.stimulusOnsetTime = performance.now();
+          if (isMobile) {
+            dpad.style.display = 'block';
+          }
 
-        state.onKeyHandler = (e)=> {
+          state.onKeyHandler = (e)=> {
           if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
           handleResponse(e);
         };
@@ -817,10 +822,12 @@ UP / DOWN / LEFT / RIGHT
     }, { passive:false });
 
     // Enable start when form is complete (no mapping gating)
-    document.addEventListener('DOMContentLoaded', () => {
-      maybeEnableStart();
-      setupTouchControls();
-    });
+      document.addEventListener('DOMContentLoaded', () => {
+        maybeEnableStart();
+        if (isMobile) {
+          setupTouchControls();
+        }
+      });
   </script>
 </body>
 </html>
