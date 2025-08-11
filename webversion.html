@@ -4,13 +4,10 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Spatial Navigation Task</title>
-  <!-- stimulus_mappings.js must define:
-       window.stimulusMapping = {
-         easy:    [{id,file,egocentric_correct,allocentric_correct}, ...],
-         hard:    [...],
-         control: [...]
-       } -->
-  <script src="stimulus_mappings.js"></script>
+
+  <!-- Make sure this path is correct and the file defines: window.stimulusMapping -->
+  <script src="stimulus_mappings.js" defer></script>
+
   <style>
     body {
       margin: 0; padding: 0;
@@ -37,15 +34,13 @@
       object-fit: contain; border: 2px solid #ddd; display: none;
       pointer-events: none;
     }
-    /* crisp fixation (SVG-like cross) */
-    .fixation {
-      position: absolute; width: 64px; height: 64px; display: none;
-    }
+    /* crisp fixation cross */
+    .fixation { position: absolute; width: 64px; height: 64px; display: none; }
     .fixation::before, .fixation::after {
       content: ""; position: absolute; background: #333; border-radius: 1px;
     }
-    .fixation::before { /* vertical */ left: 50%; transform: translateX(-50%); top: 0; width: 2px; height: 100%; }
-    .fixation::after  { /* horizontal */ top: 50%; transform: translateY(-50%); left: 0; width: 100%; height: 2px; }
+    .fixation::before { left: 50%; transform: translateX(-50%); top: 0; width: 2px; height: 100%; }
+    .fixation::after  { top: 50%; transform: translateY(-50%); left: 0; width: 100%; height: 2px; }
 
     .instruction-text { font-size: 18px; line-height: 1.5; max-width: 640px; margin: 0 auto; }
     .button {
@@ -62,7 +57,7 @@
     }
     .egocentric-header { background: #4CAF50; }
     .allocentric-header { background: #9C27B0; }
-    .control-header { background: #FF9800; }
+    .control-header   { background: #FF9800; }
 
     .form-group { margin: 10px 0; }
     .form-group label { display: inline-block; width: 160px; text-align: right; margin-right: 10px; }
@@ -71,6 +66,10 @@
     }
 
     .hint { font-size: 12px; color: #666; font-style: italic; margin-top: 6px; }
+    #mapping-status { margin-top: 6px; font-size: 12px; }
+    #mapping-status.ready { color: #2e7d32; }
+    #mapping-status.wait  { color: #999; }
+    #mapping-status.err   { color: #c0392b; }
 
     /* Practice-only helper under stage */
     #practice-helper { display:none; margin-top:10px; font-size:14px; color:#555; }
@@ -103,13 +102,15 @@
       </div>
       <div id="group-desc" class="hint"></div>
 
+      <div id="mapping-status" class="hint wait">Stimuli: checking…</div>
+
       <div class="form-group">
         <label>Age:</label>
-        <input type="number" id="age" min="18" max="100">
+        <input type="number" id="age" min="18" max="100" oninput="maybeEnableStart()">
       </div>
       <div class="form-group">
         <label>Gender:</label>
-        <select id="gender">
+        <select id="gender" onchange="maybeEnableStart()">
           <option value="">Select...</option>
           <option value="male">Male</option>
           <option value="female">Female</option>
@@ -119,7 +120,7 @@
       </div>
       <div class="form-group">
         <label>Handedness:</label>
-        <select id="handedness">
+        <select id="handedness" onchange="maybeEnableStart()">
           <option value="">Select...</option>
           <option value="right">Right</option>
           <option value="left">Left</option>
@@ -128,8 +129,9 @@
       </div>
 
       <button class="button" id="start-button" onclick="startExperiment()" disabled>
-        Please select your group first
+        Loading stimuli…
       </button>
+      <div class="hint" style="margin-top:8px;">If stimuli fail to load, ensure <code>stimulus_mappings.js</code> is present and exports <code>window.stimulusMapping</code>.</div>
     </div>
 
     <!-- Instructions -->
@@ -208,7 +210,9 @@
       blockData: []
     };
 
-    /********* INSTRUCTIONS (for instruction screens) *********/
+    let mappingReady = false;
+
+    /********* INSTRUCTIONS *********/
     const INSTRUCTIONS = {
       full: {
         egocentric: `
@@ -372,9 +376,9 @@ UP / DOWN / LEFT / RIGHT
     }
 
     function prepareBlockStimuli(navType, difficulty, blockIndex, rng, count){
-      const bucket = stimulusMapping && stimulusMapping[difficulty];
+      const bucket = window.stimulusMapping && window.stimulusMapping[difficulty];
       if (!bucket || !bucket.length) {
-        alert(`No stimuli for difficulty: ${difficulty}`);
+        console.error(`No stimuli for difficulty: ${difficulty}`);
         return [];
       }
       const key = navType + '_' + difficulty;
@@ -394,8 +398,29 @@ UP / DOWN / LEFT / RIGHT
 
     async function preloadImages(stimuli) {
       await Promise.all(stimuli.map(s => new Promise(res => {
-        const img = new Image(); img.onload = res; img.onerror = res; img.src = s.file;
+        const img = new Image();
+        img.onload = res; img.onerror = res; img.src = s.file;
       })));
+    }
+
+    // Mapping wait + validation
+    function isMappingValid(obj){
+      if (!obj) return false;
+      const requiredBuckets = ['easy','hard']; // control optional
+      for (const k of requiredBuckets){
+        if (!Array.isArray(obj[k]) || obj[k].length === 0) return false;
+      }
+      // check a couple fields on first easy item
+      const t = obj.easy[0];
+      return t && 'id' in t && 'file' in t && 'egocentric_correct' in t && 'allocentric_correct' in t;
+    }
+    async function waitForMapping(timeoutMs=4000){
+      const t0 = performance.now();
+      while (performance.now() - t0 < timeoutMs) {
+        if (isMappingValid(window.stimulusMapping)) return true;
+        await sleep(100);
+      }
+      return isMappingValid(window.stimulusMapping);
     }
 
     // Apps Script ID (with offline fallback)
@@ -426,19 +451,32 @@ UP / DOWN / LEFT / RIGHT
     /********* UI HOOKS *********/
     function onGroupChange(){
       const group = document.getElementById('participant-group').value;
-      const startBtn = document.getElementById('start-button');
       const desc = document.getElementById('group-desc');
-      if (group) { desc.textContent = GROUP_DESCRIPTIONS[group] || ''; startBtn.disabled = false; startBtn.textContent='Start Experiment'; }
-      else { desc.textContent=''; startBtn.disabled = true; startBtn.textContent='Please select your group first'; }
+      desc.textContent = group ? (GROUP_DESCRIPTIONS[group] || '') : '';
+      maybeEnableStart();
     }
 
-    async function startExperiment(){
+    function maybeEnableStart(){
       const group = document.getElementById('participant-group').value;
       const age = document.getElementById('age').value;
       const gender = document.getElementById('gender').value;
       const handedness = document.getElementById('handedness').value;
-      if (!group) return alert('Please select your participant group first');
-      if (!age || !gender || !handedness) return alert('Please fill in all required fields (Age, Gender, Handedness)');
+      const startBtn = document.getElementById('start-button');
+
+      const ready = mappingReady && group && age && gender && handedness;
+      startBtn.disabled = !ready;
+      startBtn.textContent = ready ? 'Start Experiment'
+                                   : (mappingReady ? 'Please complete the form' : 'Loading stimuli…');
+    }
+
+    async function startExperiment(){
+      if (!mappingReady) return;
+
+      const group = document.getElementById('participant-group').value;
+      const age = document.getElementById('age').value;
+      const gender = document.getElementById('gender').value;
+      const handedness = document.getElementById('handedness').value;
+      if (!group || !age || !gender || !handedness) return alert('Please fill in all required fields (Age, Gender, Handedness)');
 
       const startBtn = document.getElementById('start-button');
       startBtn.disabled = true; startBtn.textContent = 'Assigning ID...';
@@ -466,7 +504,7 @@ UP / DOWN / LEFT / RIGHT
       setInstructionContinue(()=> { state.isPractice = true; state.currentTrial = 0; runPracticeTrial(); });
       showScreen('instruction-screen');
 
-      // re-enable start if they return
+      // re-enable if they return
       startBtn.disabled = false; startBtn.textContent = 'Start Experiment';
     }
 
@@ -504,12 +542,12 @@ UP / DOWN / LEFT / RIGHT
       hideInstructionContinue();
       showScreen('instruction-screen');
 
-      for (let i=2; i>=1; i--){
+      for (let i=3; i>=1; i--){
         txt.innerHTML = `
           <p><strong>${head.textContent}</strong> practice (2 quick questions)</p>
           <p>${blurb}</p>
           <p>Starting in ${i}…</p>`;
-        await sleep(800);
+        await sleep(1000);  // more visible countdown
       }
       thenStartFn();
     }
@@ -537,12 +575,11 @@ UP / DOWN / LEFT / RIGHT
       // Determine practice type (first 2 = ego, next 2 = allo)
       const navType = state.currentTrial < 2 ? 'egocentric' : 'allocentric';
 
-      // On first trial of each type, show a 2-second banner
+      // On first trial of each type, show a 3→2→1 banner
       if (state.currentTrial === 0 || state.currentTrial === 2) {
         return showPracticeTypeBanner(navType, () => {
-          // After countdown, start first trial of this practice type
           setPracticeBadgeAndLegend(navType);
-          const stim = stimulusMapping.easy[state.currentTrial % stimulusMapping.easy.length];
+          const stim = window.stimulusMapping.easy[state.currentTrial % window.stimulusMapping.easy.length];
           presentStimulus(stim, navType, 'practice');
           updateProgress();
         });
@@ -550,7 +587,7 @@ UP / DOWN / LEFT / RIGHT
 
       // Otherwise, just present next practice trial
       setPracticeBadgeAndLegend(navType);
-      const stim = stimulusMapping.easy[state.currentTrial % stimulusMapping.easy.length];
+      const stim = window.stimulusMapping.easy[state.currentTrial % window.stimulusMapping.easy.length];
       presentStimulus(stim, navType, 'practice');
       updateProgress();
     }
@@ -598,7 +635,7 @@ UP / DOWN / LEFT / RIGHT
     }
 
     function nextTrial(){
-      if (state.isPractice) return; // safety; practice drives itself
+      if (state.isPractice) return; // practice drives itself
 
       if (state.currentTrial >= config.trialsPerBlock) {
         // end of block
@@ -622,7 +659,7 @@ UP / DOWN / LEFT / RIGHT
 
       presentStimulus(stim, block.navType, block.difficulty);
       updateProgress();
-      // do not increment here; we increment after logging the response
+      // increment after logging response
     }
 
     /********* PRESENT & RESPOND *********/
@@ -631,12 +668,13 @@ UP / DOWN / LEFT / RIGHT
       state.currentNavType = navType;
       state.currentDifficulty = difficulty;
 
-      // If in practice, make sure badge+legend reflect current mode
+      // If in practice, show badge+legend
       if (state.isPractice) setPracticeBadgeAndLegend(navType);
 
       const img = document.getElementById('stimulus-image');
       const fix = document.getElementById('fixation');
 
+      window.focus();  // ensure key events go here
       img.style.display = 'none';
       fix.style.display = 'block';
       showScreen('stimulus-screen');
@@ -648,8 +686,12 @@ UP / DOWN / LEFT / RIGHT
         state.stimulusOnsetTime = performance.now();
 
         // One-time key handler + timeout
-        state.onKeyHandler = (e)=> handleResponse(e);
-        document.addEventListener('keydown', state.onKeyHandler, { once: true });
+        state.onKeyHandler = (e)=> {
+          if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+          handleResponse(e);
+        };
+        document.addEventListener('keydown', state.onKeyHandler, { once: true, passive: false });
+
         state.responseTimeout = setTimeout(()=> {
           if (state.onKeyHandler) {
             document.removeEventListener('keydown', state.onKeyHandler);
@@ -665,8 +707,11 @@ UP / DOWN / LEFT / RIGHT
       const valid = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','timeout'];
       const key = event.key || event;
       if (!valid.includes(key)) {
-        // Rearm listener if a non-task key was pressed
-        document.addEventListener('keydown', state.onKeyHandler = (e)=>handleResponse(e), { once: true });
+        // re-arm listener if non-task key pressed
+        document.addEventListener('keydown', state.onKeyHandler = (e)=> {
+          if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+          handleResponse(e);
+        }, { once: true, passive: false });
         return;
       }
 
@@ -706,16 +751,13 @@ UP / DOWN / LEFT / RIGHT
       };
 
       if (state.isPractice) {
-        // Practice feedback
         saveToGoogleSheet({ ...common, block: 'practice', trial: state.currentTrial + 1 });
         showPracticeFeedback(accuracy, tooSlow);
       } else {
-        // Main task: add to block data
         const trialNum = state.currentTrial + 1;
         state.blockData.push({ ...common, block: state.currentBlock + 1, trial: trialNum });
         saveToGoogleSheet({ ...common, block: state.currentBlock + 1, trial: trialNum });
 
-        // advance trial counter AFTER logging
         state.currentTrial += 1;
         setTimeout(()=> nextTrial(), config.itiDuration);
       }
@@ -801,11 +843,32 @@ UP / DOWN / LEFT / RIGHT
       URL.revokeObjectURL(url);
     }
 
-    /********* STARTUP GUARD *********/
-    if (!window.stimulusMapping) {
-      alert('Error: Stimulus mappings not loaded. Please refresh.');
-      console.error('stimulusMapping is not defined');
-    }
+    /********* INIT *********/
+    window.addEventListener('DOMContentLoaded', async () => {
+      // stop page-scroll on arrow keys (defensive)
+      window.addEventListener('keydown', (e) => {
+        if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+          e.preventDefault();
+        }
+      }, { passive:false });
+
+      const status = document.getElementById('mapping-status');
+      const startBtn = document.getElementById('start-button');
+
+      status.className = 'hint wait';
+      status.textContent = 'Stimuli: checking…';
+
+      mappingReady = await waitForMapping(4000);
+      if (mappingReady) {
+        status.className = 'hint ready';
+        status.textContent = `Stimuli: ready (easy=${window.stimulusMapping.easy.length}, hard=${window.stimulusMapping.hard.length}${window.stimulusMapping.control ? ', control='+window.stimulusMapping.control.length : ''})`;
+      } else {
+        status.className = 'hint err';
+        status.innerHTML = 'Stimuli: not loaded. Check <code>stimulus_mappings.js</code> and try reloading.';
+      }
+
+      maybeEnableStart();
+    });
   </script>
 </body>
 </html>
