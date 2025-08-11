@@ -571,11 +571,22 @@
 
     // After practice, show a single Continue to main task
     function showPracticeComplete() {
+      // reset practice flag and counters so the first block can start cleanly
       state.isPractice = false; // so Continue starts main task
+      state.currentTrial = 0;
+      state.currentBlock = 0;
+      state.blockData = [];
+      state.currentBlockStimuli = [];
+
       const instructionText = document.getElementById('instruction-text');
       const navIndicator = document.getElementById('nav-type-indicator');
       navIndicator.className = '';
       navIndicator.textContent = '';
+
+      // ensure the continue button is active after practice
+      const contBtn = document.getElementById('instruction-continue');
+      if (contBtn) contBtn.disabled = false;
+
       instructionText.innerHTML = `
         <h3>Practice Complete</h3>
         <p>Great job! The main task will begin next.</p>
