@@ -4,7 +4,7 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Spatial Navigation Task</title>
-  <!-- Your mapping file must define:
+  <!-- stimulus_mappings.js must define:
        window.stimulusMapping = {
          easy:    [{id,file,egocentric_correct,allocentric_correct}, ...],
          hard:    [...],
@@ -27,6 +27,7 @@
     .screen { display: none; text-align: center; padding: 20px; }
     .screen.active { display: block; }
 
+    /* 500x500 centered stage */
     .stimulus-stage {
       width: 500px; height: 500px; margin: 0 auto; position: relative;
       display: flex; align-items: center; justify-content: center;
@@ -34,7 +35,9 @@
     #stimulus-image {
       position: absolute; inset: 0; width: 100%; height: 100%;
       object-fit: contain; border: 2px solid #ddd; display: none;
+      pointer-events: none;
     }
+    /* crisp fixation (SVG-like cross) */
     .fixation {
       position: absolute; width: 64px; height: 64px; display: none;
     }
@@ -51,6 +54,7 @@
     }
     .button:hover { background: #45a049; }
     .button:disabled { background: #bbb; cursor: not-allowed; }
+
     .progress { position: absolute; top: 10px; right: 10px; font-size: 14px; color: #666; }
 
     .nav-type-header {
@@ -67,6 +71,13 @@
     }
 
     .hint { font-size: 12px; color: #666; font-style: italic; margin-top: 6px; }
+
+    /* Practice-only helper under stage */
+    #practice-helper { display:none; margin-top:10px; font-size:14px; color:#555; }
+
+    /* Practice badge shown on stimulus screen (practice only) */
+    #practice-banner { display:none; }
+
     .debug { position: fixed; left: 8px; bottom: 8px; background: rgba(255,255,255,.9); border: 1px solid #eee; padding: 6px 8px; font-size: 11px; max-width: 320px; display: none; }
     .debug.active { display: block; }
   </style>
@@ -130,10 +141,16 @@
 
     <!-- Stimulus -->
     <div id="stimulus-screen" class="screen">
+      <!-- practice badge shown only during practice -->
+      <div id="practice-banner" class="nav-type-header"></div>
+
       <div class="stimulus-stage">
         <img id="stimulus-image" src="" alt="Stimulus">
         <div class="fixation" id="fixation" aria-hidden="true"></div>
       </div>
+
+      <!-- practice legend (practice only) -->
+      <div id="practice-helper"></div>
     </div>
 
     <!-- Feedback / Completion -->
@@ -161,14 +178,16 @@
       HNS: 'Hearing individuals who do not know sign language'
     };
 
-    // 2 nav types × 2 difficulties × 2 reps + 1 control block inserted mid-run → 9 total blocks.
+    // 2 nav types × 2 difficulties (each twice) + 1 control inserted → 9 total blocks.
     const config = {
       trialsPerBlock: 15,
       maxResponseTime: 3000,   // ms
       fixationDuration: 800,   // ms
       itiDuration: 400,        // ms (main task only)
       practiceTrials: 4,       // 2 ego + 2 allo
-      repetitions: 2,          // each (ego/allo)×(easy/hard) twice
+      repetitions: 2,
+      navigationTypes: ['egocentric', 'allocentric'],
+      difficultyLevels: ['easy', 'hard'],
       blocks: []
     };
 
@@ -189,8 +208,50 @@
       blockData: []
     };
 
-    // Participant-friendly instructions
+    /********* INSTRUCTIONS (for instruction screens) *********/
     const INSTRUCTIONS = {
+      full: {
+        egocentric: `
+In this task, you will move from the gray player to the red stop sign while avoiding blue walls.
+The gray triangle shows which way the player is facing.
+Your job is to choose the first step the player should take. Make your choice as if you are the player.
+
+Use these keys:
+• UP arrow: Move forward (in the direction the player is facing)
+• DOWN arrow: Move backward
+• LEFT arrow: Move to the player's left
+• RIGHT arrow: Move to the player's right
+
+Example: UP moves you forward in whatever direction you're facing.
+Choose the first step needed to reach the stop sign. Try to respond quickly and correctly.
+        `,
+        allocentric: `
+In this task, you will move from the gray player to the red stop sign while avoiding blue walls.
+Your job is to choose the first step the player should take using screen directions (like a map).
+
+Use these keys:
+• UP arrow: Toward the top of the screen
+• DOWN arrow: Toward the bottom of the screen
+• LEFT arrow: Toward the left side of the screen
+• RIGHT arrow: Toward the right side of the screen
+
+No matter which way the player is facing, pressing UP always moves toward the top of the screen.
+Choose the first step needed to reach the target. Try to respond quickly and correctly.
+        `,
+        control: `
+In this task, you will see arrows showing the path from the player to the target.
+Your job is to follow the first arrow from the player's position.
+
+Use these keys:
+• UP arrow: When the first arrow points up
+• DOWN arrow: When the first arrow points down
+• LEFT arrow: When the first arrow points left
+• RIGHT arrow: When the first arrow points right
+
+Example: Press the RIGHT arrow key if the first arrow points right.
+Try to respond quickly and correctly.
+        `
+      },
       brief: {
         egocentric: `
 PLAYER VIEW:
@@ -203,7 +264,7 @@ RIGHT = to your right
 MAP VIEW:
 UP = toward the top of the screen
 DOWN = toward the bottom of the screen
-LEFT = toward the left side of the screen
+LEFT = toward the left of the screen
 RIGHT = toward the right of the screen
         `,
         control: `
@@ -230,11 +291,11 @@ UP / DOWN / LEFT / RIGHT
     function setInstructionContinue(handler) {
       const btn = document.getElementById('instruction-continue');
       btn.onclick = handler;
-      btn.style.display = 'inline-block';
+      showInstructionContinue();
     }
-    function hideInstructionContinue() {
-      document.getElementById('instruction-continue').style.display = 'none';
-    }
+    function hideInstructionContinue(){ document.getElementById('instruction-continue').style.display = 'none'; }
+    function showInstructionContinue(){ document.getElementById('instruction-continue').style.display = 'inline-block'; }
+
     function debugLog(msg) {
       if (!debugMode) return;
       const d = document.getElementById('debug');
@@ -243,7 +304,7 @@ UP / DOWN / LEFT / RIGHT
     function updateProgress() {
       const el = document.getElementById('progress');
       if (state.isPractice) {
-        el.textContent = `Practice | Trial ${state.currentTrial + 1}/${config.practiceTrials}`;
+        el.textContent = `Practice ${state.currentTrial + 1}/${config.practiceTrials}`;
       } else {
         const totalBlocks = config.blocks.length || 1;
         el.textContent = `Block ${state.currentBlock + 1}/${totalBlocks} | Trial ${state.currentTrial + 1}/${config.trialsPerBlock}`;
@@ -274,14 +335,14 @@ UP / DOWN / LEFT / RIGHT
       return new RNG(base*1000 + jitter);
     }
 
-    // Counterbalance from participant id → 1..4
+    // Counterbalance via numeric part of participant id → 1..4
     function determineCounterbalance(participantId){
       const m = String(participantId).match(/\d+/);
       const n = m ? parseInt(m[0],10) : [...String(participantId)].reduce((a,c)=>a+c.charCodeAt(0),0);
       return (n % 4) + 1;
     }
 
-    // Latin-square over [(ego, easy), (ego, hard), (allo, easy), (allo, hard)] ×2; insert one control in the middle.
+    // Latin-square over [(ego, easy), (ego, hard), (allo, easy), (allo, hard)], duplicated; control in middle.
     function createBlockSequence(counterbalance){
       const latin = [
         [['egocentric','easy'], ['egocentric','hard'], ['allocentric','easy'], ['allocentric','hard']],
@@ -294,7 +355,7 @@ UP / DOWN / LEFT / RIGHT
       for (let r=0; r<config.repetitions; r++){
         base.forEach(([n,d]) => seq.push({navType:n, difficulty:d}));
       }
-      seq.splice(4, 0, {navType:'control', difficulty:'control'}); // insert control once
+      seq.splice(4, 0, {navType:'control', difficulty:'control'}); // insert control
       debugLog('Block sequence: ' + seq.map(b=>b.navType+'/'+b.difficulty).join(' | '));
       return seq;
     }
@@ -393,54 +454,72 @@ UP / DOWN / LEFT / RIGHT
       config.blocks = createBlockSequence(cb);
       state.usedStimuliTracker = {};
 
-      // Clear practice counters
-      state.isPractice = true;
-      state.currentTrial = 0;
-
-      // Practice overview — explicitly mentions the two question types
+      // Practice intro (one Continue to begin)
       const txt = document.getElementById('instruction-text');
       const head = document.getElementById('nav-type-indicator'); head.className=''; head.textContent='';
       txt.innerHTML = `
-        <h3>Practice Phase (2 short parts)</h3>
-        <p>You will answer <strong>two kinds of practice questions</strong>:</p>
-        <p><strong>1) PLAYER VIEW</strong> — act as if you are the player:<br>
-        UP = forward, DOWN = backward, LEFT/RIGHT = turn</p>
-        <p><strong>2) MAP VIEW</strong> — use screen directions like a map:<br>
-        UP = top of the screen, DOWN = bottom, LEFT = left, RIGHT = right</p>
-        <p>You will do <strong>2 questions of each type</strong>. Between them, you’ll see a brief reminder of the next type.<br>
-        You’ll get quick “Correct/Incorrect” feedback in practice.</p>
-        <p>Press <strong>Continue</strong> to begin practice.</p>`;
-      setInstructionContinue(()=> { runPracticeTrial(/*showBannerIfNeeded=*/true); });
+        <h3>Practice Phase</h3>
+        <p>You will practice two quick examples of each navigation type.</p>
+        <p><strong>PLAYER VIEW</strong>: act as if you are the player (UP=forward, DOWN=backward, LEFT/RIGHT=turn)</p>
+        <p><strong>MAP VIEW</strong>: use map directions (UP=top, DOWN=bottom, LEFT=west, RIGHT=east)</p>
+        <p>Press Continue when you’re ready to start practice.</p>`;
+      setInstructionContinue(()=> { state.isPractice = true; state.currentTrial = 0; runPracticeTrial(); });
       showScreen('instruction-screen');
 
-      // re-enable start for safety if user returns
+      // re-enable start if they return
       startBtn.disabled = false; startBtn.textContent = 'Start Experiment';
     }
 
-    /********* PRACTICE FLOW *********/
-    // Show a brief auto-advancing banner when switching practice types (no extra button)
+    /********* PRACTICE HELPERS *********/
+    function setPracticeBadgeAndLegend(navType) {
+      const banner = document.getElementById('practice-banner');
+      const helper = document.getElementById('practice-helper');
+
+      if (!state.isPractice) {
+        banner.style.display = 'none';
+        helper.style.display = 'none';
+        return;
+      }
+      banner.className = `nav-type-header ${navType}-header`;
+      banner.textContent = (navType === 'egocentric' ? 'PLAYER VIEW' : 'MAP VIEW') + ' practice';
+      banner.style.display = 'inline-block';
+
+      helper.style.display = 'block';
+      helper.innerHTML = (navType === 'egocentric')
+        ? 'Legend (practice only): UP=forward · DOWN=backward · LEFT=turn left · RIGHT=turn right'
+        : 'Legend (practice only): UP=top · DOWN=bottom · LEFT=left · RIGHT=right';
+    }
+
     async function showPracticeTypeBanner(navType, thenStartFn){
       const head = document.getElementById('nav-type-indicator');
-      const txt = document.getElementById('instruction-text');
-      head.className = `nav-type-header ${navType}-header`;
-      head.textContent = prettyHeader(navType);
+      const txt  = document.getElementById('instruction-text');
 
-      txt.innerHTML = `
-        <pre style="text-align:left; white-space:pre-wrap; line-height:1.4; font-family:inherit;">
-${INSTRUCTIONS.brief[navType].trim()}
-        </pre>
-        <p>Next: <strong>${prettyHeader(navType)}</strong> practice — 2 quick questions. Starting...</p>`;
+      head.className = `nav-type-header ${navType}-header`;
+      head.textContent = navType === 'egocentric' ? 'PLAYER VIEW' : 'MAP VIEW';
+
+      const blurb = (navType === 'egocentric')
+        ? 'UP=forward · DOWN=backward · LEFT=turn left · RIGHT=turn right'
+        : 'UP=top · DOWN=bottom · LEFT=left · RIGHT=right';
+
       hideInstructionContinue();
       showScreen('instruction-screen');
-      await sleep(900); // brief pause to orient
+
+      for (let i=2; i>=1; i--){
+        txt.innerHTML = `
+          <p><strong>${head.textContent}</strong> practice (2 quick questions)</p>
+          <p>${blurb}</p>
+          <p>Starting in ${i}…</p>`;
+        await sleep(800);
+      }
       thenStartFn();
     }
 
-    function runPracticeTrial(showBannerIfNeeded=false){
-      if (!state.isPractice) return; // safety
+    /********* PRACTICE FLOW *********/
+    function runPracticeTrial(){
+      if (!state.isPractice) return;
 
+      // Completed practice?
       if (state.currentTrial >= config.practiceTrials) {
-        // Practice → break screen before main task
         state.isPractice = false;
         state.currentBlock = 0; state.currentTrial = 0;
 
@@ -455,19 +534,23 @@ ${INSTRUCTIONS.brief[navType].trim()}
         return;
       }
 
-      // Determine current practice type (first 2 = ego, next 2 = allo)
+      // Determine practice type (first 2 = ego, next 2 = allo)
       const navType = state.currentTrial < 2 ? 'egocentric' : 'allocentric';
-      const stim = stimulusMapping.easy[state.currentTrial % stimulusMapping.easy.length];
 
-      // If we just switched types (trial 2), show a brief banner without adding a button
-      if (showBannerIfNeeded || state.currentTrial === 2) {
-        const needBanner = (state.currentTrial === 0) || (state.currentTrial === 2);
-        if (needBanner) {
-          showPracticeTypeBanner(navType, () => presentStimulus(stim, navType, 'practice'));
-          return;
-        }
+      // On first trial of each type, show a 2-second banner
+      if (state.currentTrial === 0 || state.currentTrial === 2) {
+        return showPracticeTypeBanner(navType, () => {
+          // After countdown, start first trial of this practice type
+          setPracticeBadgeAndLegend(navType);
+          const stim = stimulusMapping.easy[state.currentTrial % stimulusMapping.easy.length];
+          presentStimulus(stim, navType, 'practice');
+          updateProgress();
+        });
       }
 
+      // Otherwise, just present next practice trial
+      setPracticeBadgeAndLegend(navType);
+      const stim = stimulusMapping.easy[state.currentTrial % stimulusMapping.easy.length];
       presentStimulus(stim, navType, 'practice');
       updateProgress();
     }
@@ -478,17 +561,18 @@ ${INSTRUCTIONS.brief[navType].trim()}
       const head = document.getElementById('nav-type-indicator');
       const txt = document.getElementById('instruction-text');
 
-      const name = prettyHeader(block.navType);
+      const name = block.navType === 'egocentric' ? 'PLAYER VIEW'
+                 : block.navType === 'allocentric' ? 'MAP VIEW' : 'ARROW FOLLOWING';
       head.className = `nav-type-header ${block.navType}-header`;
       head.textContent = name;
 
       const msg = {
         egocentric: `Navigate from the gray player to the red stop sign.<br><br>
                      Use arrow keys as if YOU are the player:<br>
-                     UP = forward, DOWN = backward, LEFT = turn left, RIGHT = turn right`,
+                     UP=forward, DOWN=backward, LEFT=turn left, RIGHT=turn right`,
         allocentric:`Navigate from the gray player to the red stop sign.<br><br>
                      Use arrow keys as map directions:<br>
-                     UP = north (top), DOWN = south (bottom), LEFT = west, RIGHT = east`,
+                     UP=top, DOWN=bottom, LEFT=west, RIGHT=east`,
         control:    `Follow the arrows shown.<br><br>
                      Press the arrow key matching the FIRST arrow from the player.`
       };
@@ -504,17 +588,21 @@ ${INSTRUCTIONS.brief[navType].trim()}
       const rng = rngFromId(state.participantInfo.id + '_b' + state.currentBlock);
       state.currentBlockStimuli = prepareBlockStimuli(block.navType, block.difficulty, state.currentBlock, rng, config.trialsPerBlock);
       state.currentTrial = 0; state.blockData = [];
+
+      // Hide practice badge/legend for main task
+      document.getElementById('practice-banner').style.display = 'none';
+      document.getElementById('practice-helper').style.display = 'none';
+
       await preloadImages(state.currentBlockStimuli);
       nextTrial();
     }
 
     function nextTrial(){
-      if (state.isPractice) return; // safety
+      if (state.isPractice) return; // safety; practice drives itself
 
       if (state.currentTrial >= config.trialsPerBlock) {
         // end of block
         state.allData.push(...state.blockData);
-        state.blockData = [];
         state.currentBlock++;
         if (state.currentBlock >= config.blocks.length) {
           showCompletion();
@@ -534,7 +622,7 @@ ${INSTRUCTIONS.brief[navType].trim()}
 
       presentStimulus(stim, block.navType, block.difficulty);
       updateProgress();
-      // increment happens after logging the response
+      // do not increment here; we increment after logging the response
     }
 
     /********* PRESENT & RESPOND *********/
@@ -542,6 +630,9 @@ ${INSTRUCTIONS.brief[navType].trim()}
       state.currentStimulus = stimulus;
       state.currentNavType = navType;
       state.currentDifficulty = difficulty;
+
+      // If in practice, make sure badge+legend reflect current mode
+      if (state.isPractice) setPracticeBadgeAndLegend(navType);
 
       const img = document.getElementById('stimulus-image');
       const fix = document.getElementById('fixation');
@@ -574,7 +665,7 @@ ${INSTRUCTIONS.brief[navType].trim()}
       const valid = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','timeout'];
       const key = event.key || event;
       if (!valid.includes(key)) {
-        // rearm single listener if a wrong key was pressed
+        // Rearm listener if a non-task key was pressed
         document.addEventListener('keydown', state.onKeyHandler = (e)=>handleResponse(e), { once: true });
         return;
       }
@@ -587,18 +678,19 @@ ${INSTRUCTIONS.brief[navType].trim()}
 
       const map = { ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right', timeout:'none' };
       const response = map[key];
-      const rt = key === 'timeout' ? null : Math.round(performance.now() - state.stimulusOnsetTime);
+      const tooSlow = (key === 'timeout');
+      const rt = tooSlow ? null : Math.round(performance.now() - state.stimulusOnsetTime);
 
-      // Score
+      // Score against correct mapping for the current nav type
       let correct;
       if (state.currentNavType === 'egocentric')
         correct = state.currentStimulus.egocentric_correct;
       else if (state.currentNavType === 'allocentric')
         correct = state.currentStimulus.allocentric_correct;
-      else // control block: use whichever mapping is present (prefer ego)
+      else
         correct = state.currentStimulus.egocentric_correct ?? state.currentStimulus.allocentric_correct;
 
-      const accuracy = response === correct ? 1 : 0;
+      const accuracy = (!tooSlow && response === correct) ? 1 : 0;
 
       const common = {
         participant_id: state.participantInfo.id,
@@ -614,39 +706,39 @@ ${INSTRUCTIONS.brief[navType].trim()}
       };
 
       if (state.isPractice) {
-        // Practice feedback (brief), then next practice trial
+        // Practice feedback
         saveToGoogleSheet({ ...common, block: 'practice', trial: state.currentTrial + 1 });
-        showPracticeFeedback(accuracy);
+        showPracticeFeedback(accuracy, tooSlow);
       } else {
         // Main task: add to block data
         const trialNum = state.currentTrial + 1;
         state.blockData.push({ ...common, block: state.currentBlock + 1, trial: trialNum });
-        state.allData.push({ ...common, block: state.currentBlock + 1, trial: trialNum }); // also store to allData live
         saveToGoogleSheet({ ...common, block: state.currentBlock + 1, trial: trialNum });
 
-        // advance trial counter only AFTER logging
+        // advance trial counter AFTER logging
         state.currentTrial += 1;
         setTimeout(()=> nextTrial(), config.itiDuration);
       }
     }
 
-    function showPracticeFeedback(ok){
+    function showPracticeFeedback(ok, tooSlow){
       const txt = document.getElementById('feedback-text');
       const dl  = document.getElementById('download-data');
-      txt.textContent = ok ? 'Correct!' : 'Incorrect';
-      txt.style.color = ok ? 'green' : 'red';
+      txt.textContent = tooSlow ? 'Too slow' : (ok ? 'Correct!' : 'Incorrect');
+      txt.style.color = tooSlow ? '#e67e22' : (ok ? 'green' : 'red');
       dl.style.display = 'none';
       showScreen('feedback-screen');
+
+      // Block stray keypresses during feedback
+      const blockKeys = (e)=> e.stopPropagation();
+      document.addEventListener('keydown', blockKeys, true);
+
       setTimeout(()=> {
+        document.removeEventListener('keydown', blockKeys, true);
         showScreen('stimulus-screen');
         state.currentTrial += 1;
-        // For trial 2 (switch to MAP VIEW), show a quick banner before the next trial
-        if (state.currentTrial === 2) {
-          runPracticeTrial(true);
-        } else {
-          runPracticeTrial(false);
-        }
-      }, 900);
+        runPracticeTrial();
+      }, 1200);
     }
 
     /********* FINISH *********/
@@ -656,7 +748,6 @@ ${INSTRUCTIONS.brief[navType].trim()}
       const meanRt = (state.allData.reduce((s,d)=> s + (d.rt_ms || 0), 0) /
                      Math.max(1, state.allData.filter(d=>d.rt_ms!=null).length)).toFixed(0);
 
-      // Summary row
       const summary = {
         participant_id: state.participantInfo.id,
         participant_group: state.participantInfo.group,
