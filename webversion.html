@@ -5,8 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Spatial Navigation Task</title>
 
-  <!-- Make sure this path is correct and the file defines: window.stimulusMapping -->
-  <script src="stimulus_mappings.js" defer></script>
+  <!-- Your mapping file. Either:
+       1) window.stimulusMapping = { easy:[], hard:[], control:[] }  OR
+       2) const stimulusMapping = { ... }  (top-level) -->
+  <script src="stimulus_mappings.js"></script>
 
   <style>
     body {
@@ -66,7 +68,7 @@
     }
 
     .hint { font-size: 12px; color: #666; font-style: italic; margin-top: 6px; }
-    #mapping-status { margin-top: 6px; font-size: 12px; }
+    #mapping-status { margin-top: 6px; font-size: 12px; display:none; }
     #mapping-status.ready { color: #2e7d32; }
     #mapping-status.wait  { color: #999; }
     #mapping-status.err   { color: #c0392b; }
@@ -131,7 +133,7 @@
       <button class="button" id="start-button" onclick="startExperiment()" disabled>
         Loading stimuli…
       </button>
-      <div class="hint" style="margin-top:8px;">If stimuli fail to load, ensure <code>stimulus_mappings.js</code> is present and exports <code>window.stimulusMapping</code>.</div>
+      <div class="hint" style="margin-top:8px;">If stimuli fail to load, check that <code>stimulus_mappings.js</code> defines <code>window.stimulusMapping</code> or <code>const stimulusMapping</code>.</div>
     </div>
 
     <!-- Instructions -->
@@ -170,7 +172,10 @@
 
     const urlParams = new URLSearchParams(window.location.search);
     const debugMode = urlParams.get('debug') === 'true';
-    if (debugMode) document.getElementById('debug').classList.add('active');
+    if (debugMode) {
+      document.getElementById('debug').classList.add('active');
+      document.getElementById('mapping-status').style.display = 'block';
+    }
 
     const GROUP_DESCRIPTIONS = {
       DF: 'Deaf individuals who are fluent in sign language',
@@ -180,7 +185,6 @@
       HNS: 'Hearing individuals who do not know sign language'
     };
 
-    // 2 nav types × 2 difficulties (each twice) + 1 control inserted → 9 total blocks.
     const config = {
       trialsPerBlock: 15,
       maxResponseTime: 3000,   // ms
@@ -211,6 +215,39 @@
     };
 
     let mappingReady = false;
+
+    /********* MAPPING HELPERS *********/
+    function getMapping(){
+      if (window.stimulusMapping) return window.stimulusMapping;
+      if (typeof stimulusMapping !== 'undefined') return stimulusMapping; // top-level const/let
+      return null;
+    }
+    function isMappingValid(obj){
+      if (!obj) return false;
+      const requiredBuckets = ['easy','hard']; // control optional
+      for (const k of requiredBuckets){
+        if (!Array.isArray(obj[k]) || obj[k].length === 0) return false;
+      }
+      const t = obj.easy[0];
+      return t && 'id' in t && 'file' in t && 'egocentric_correct' in t && 'allocentric_correct' in t;
+    }
+    async function waitForMappingIndefinite(){
+      const status = document.getElementById('mapping-status');
+      if (debugMode) { status.className = 'hint wait'; status.textContent = 'Stimuli: checking…'; }
+      // Keep polling silently until present
+      let ticks = 0;
+      while (!isMappingValid(getMapping())) {
+        await sleep(120);
+        ticks++;
+        if (debugMode && ticks % 20 === 0) status.textContent = 'Stimuli: still loading…';
+      }
+      mappingReady = true;
+      if (debugMode) {
+        const m = getMapping();
+        status.className = 'hint ready';
+        status.textContent = `Stimuli: ready (easy=${m.easy.length}, hard=${m.hard.length}${m.control ? ', control='+m.control.length : ''})`;
+      }
+    }
 
     /********* INSTRUCTIONS *********/
     const INSTRUCTIONS = {
@@ -295,10 +332,9 @@ UP / DOWN / LEFT / RIGHT
     function setInstructionContinue(handler) {
       const btn = document.getElementById('instruction-continue');
       btn.onclick = handler;
-      showInstructionContinue();
+      btn.style.display = 'inline-block';
     }
     function hideInstructionContinue(){ document.getElementById('instruction-continue').style.display = 'none'; }
-    function showInstructionContinue(){ document.getElementById('instruction-continue').style.display = 'inline-block'; }
 
     function debugLog(msg) {
       if (!debugMode) return;
@@ -339,14 +375,12 @@ UP / DOWN / LEFT / RIGHT
       return new RNG(base*1000 + jitter);
     }
 
-    // Counterbalance via numeric part of participant id → 1..4
     function determineCounterbalance(participantId){
       const m = String(participantId).match(/\d+/);
       const n = m ? parseInt(m[0],10) : [...String(participantId)].reduce((a,c)=>a+c.charCodeAt(0),0);
       return (n % 4) + 1;
     }
 
-    // Latin-square over [(ego, easy), (ego, hard), (allo, easy), (allo, hard)], duplicated; control in middle.
     function createBlockSequence(counterbalance){
       const latin = [
         [['egocentric','easy'], ['egocentric','hard'], ['allocentric','easy'], ['allocentric','hard']],
@@ -376,7 +410,8 @@ UP / DOWN / LEFT / RIGHT
     }
 
     function prepareBlockStimuli(navType, difficulty, blockIndex, rng, count){
-      const bucket = window.stimulusMapping && window.stimulusMapping[difficulty];
+      const mapping = getMapping();
+      const bucket = mapping && mapping[difficulty];
       if (!bucket || !bucket.length) {
         console.error(`No stimuli for difficulty: ${difficulty}`);
         return [];
@@ -403,43 +438,6 @@ UP / DOWN / LEFT / RIGHT
       })));
     }
 
-    // Mapping wait + validation
-    function isMappingValid(obj){
-      if (!obj) return false;
-      const requiredBuckets = ['easy','hard']; // control optional
-      for (const k of requiredBuckets){
-        if (!Array.isArray(obj[k]) || obj[k].length === 0) return false;
-      }
-      // check a couple fields on first easy item
-      const t = obj.easy[0];
-      return t && 'id' in t && 'file' in t && 'egocentric_correct' in t && 'allocentric_correct' in t;
-    }
-    async function waitForMapping(timeoutMs=4000){
-      const t0 = performance.now();
-      while (performance.now() - t0 < timeoutMs) {
-        if (isMappingValid(window.stimulusMapping)) return true;
-        await sleep(100);
-      }
-      return isMappingValid(window.stimulusMapping);
-    }
-
-    // Apps Script ID (with offline fallback)
-    async function getUniqueIdFromServer(groupCode) {
-      const res = await fetch(GOOGLE_SHEET_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'nextIdLocked', groupCode })
-      });
-      if (!res.ok) throw new Error('ID server responded ' + res.status);
-      const data = await res.json();
-      if (!data.ok || !data.id) throw new Error(data.error || 'Bad response');
-      return data.id;
-    }
-    function fallbackLocalId(groupCode) {
-      const bytes = new Uint8Array(8); crypto.getRandomValues(bytes);
-      const hex = Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,8);
-      return `${groupCode}-tmp-${Date.now().toString(36)}-${hex}`;
-    }
     async function saveToGoogleSheet(payload){
       try {
         const body = { action: 'saveTrial', ...payload, user_agent: navigator.userAgent };
@@ -470,7 +468,10 @@ UP / DOWN / LEFT / RIGHT
     }
 
     async function startExperiment(){
-      if (!mappingReady) return;
+      if (!mappingReady) {
+        // belt & suspenders: wait silently if they click right as mapping flips to ready
+        await waitForMappingIndefinite();
+      }
 
       const group = document.getElementById('participant-group').value;
       const age = document.getElementById('age').value;
@@ -482,12 +483,25 @@ UP / DOWN / LEFT / RIGHT
       startBtn.disabled = true; startBtn.textContent = 'Assigning ID...';
 
       let assignedId;
-      try { assignedId = await getUniqueIdFromServer(group); }
-      catch(e){ debugLog('ID server failed: ' + e.message); assignedId = fallbackLocalId(group); }
+      try {
+        const res = await fetch(GOOGLE_SHEET_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'nextIdLocked', groupCode: group })
+        });
+        if (!res.ok) throw new Error('ID server responded ' + res.status);
+        const data = await res.json();
+        if (!data.ok || !data.id) throw new Error(data.error || 'Bad response');
+        assignedId = data.id;
+      } catch(e){
+        debugLog('ID server failed: ' + e.message);
+        const bytes = new Uint8Array(8); crypto.getRandomValues(bytes);
+        const hex = Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,8);
+        assignedId = `${group}-tmp-${Date.now().toString(36)}-${hex}`;
+      }
 
       state.participantInfo = { id: assignedId, group, age, gender, handedness, timestamp: new Date().toISOString() };
 
-      // Build block plan
       const cb = determineCounterbalance(assignedId);
       config.blocks = createBlockSequence(cb);
       state.usedStimuliTracker = {};
@@ -547,7 +561,7 @@ UP / DOWN / LEFT / RIGHT
           <p><strong>${head.textContent}</strong> practice (2 quick questions)</p>
           <p>${blurb}</p>
           <p>Starting in ${i}…</p>`;
-        await sleep(1000);  // more visible countdown
+        await sleep(1000);
       }
       thenStartFn();
     }
@@ -579,7 +593,8 @@ UP / DOWN / LEFT / RIGHT
       if (state.currentTrial === 0 || state.currentTrial === 2) {
         return showPracticeTypeBanner(navType, () => {
           setPracticeBadgeAndLegend(navType);
-          const stim = window.stimulusMapping.easy[state.currentTrial % window.stimulusMapping.easy.length];
+          const m = getMapping();
+          const stim = m.easy[state.currentTrial % m.easy.length];
           presentStimulus(stim, navType, 'practice');
           updateProgress();
         });
@@ -587,7 +602,8 @@ UP / DOWN / LEFT / RIGHT
 
       // Otherwise, just present next practice trial
       setPracticeBadgeAndLegend(navType);
-      const stim = window.stimulusMapping.easy[state.currentTrial % window.stimulusMapping.easy.length];
+      const m = getMapping();
+      const stim = m.easy[state.currentTrial % m.easy.length];
       presentStimulus(stim, navType, 'practice');
       updateProgress();
     }
@@ -598,8 +614,7 @@ UP / DOWN / LEFT / RIGHT
       const head = document.getElementById('nav-type-indicator');
       const txt = document.getElementById('instruction-text');
 
-      const name = block.navType === 'egocentric' ? 'PLAYER VIEW'
-                 : block.navType === 'allocentric' ? 'MAP VIEW' : 'ARROW FOLLOWING';
+      const name = prettyHeader(block.navType);
       head.className = `nav-type-header ${block.navType}-header`;
       head.textContent = name;
 
@@ -668,7 +683,6 @@ UP / DOWN / LEFT / RIGHT
       state.currentNavType = navType;
       state.currentDifficulty = difficulty;
 
-      // If in practice, show badge+legend
       if (state.isPractice) setPracticeBadgeAndLegend(navType);
 
       const img = document.getElementById('stimulus-image');
@@ -852,21 +866,8 @@ UP / DOWN / LEFT / RIGHT
         }
       }, { passive:false });
 
-      const status = document.getElementById('mapping-status');
-      const startBtn = document.getElementById('start-button');
-
-      status.className = 'hint wait';
-      status.textContent = 'Stimuli: checking…';
-
-      mappingReady = await waitForMapping(4000);
-      if (mappingReady) {
-        status.className = 'hint ready';
-        status.textContent = `Stimuli: ready (easy=${window.stimulusMapping.easy.length}, hard=${window.stimulusMapping.hard.length}${window.stimulusMapping.control ? ', control='+window.stimulusMapping.control.length : ''})`;
-      } else {
-        status.className = 'hint err';
-        status.innerHTML = 'Stimuli: not loaded. Check <code>stimulus_mappings.js</code> and try reloading.';
-      }
-
+      // Silently wait for stimuli (no participant error). Status only in debug mode.
+      await waitForMappingIndefinite();
       maybeEnableStart();
     });
   </script>
