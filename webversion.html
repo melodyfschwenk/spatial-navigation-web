@@ -437,6 +437,7 @@ UP / DOWN / LEFT / RIGHT
       } catch(e){ /* silent */ }
     }
 
+    notifyParentIfEmbedded({ completed: true });
     /********* FORM *********/
     function onGroupChange(){
       const group = document.getElementById('participant-group').value;
@@ -894,5 +895,6 @@ UP / DOWN / LEFT / RIGHT
   </script>
 </body>
 </html>
+
 
 
