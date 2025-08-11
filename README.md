@@ -18,6 +18,7 @@ Participants view maze stimuli and must indicate the first step needed to reach 
 - **9 Blocks**: 15 trials per block (135 total trials)
 - **Data Export**: Automatic CSV download at experiment completion
 - **Browser-Based**: No installation required, runs in any modern web browser
+- **Touchscreen Support**: On-screen D-pad controls for mobile devices, positioned based on handedness
 
 ## File Structure
 
@@ -57,8 +58,9 @@ spatial-navigation-web/
 
 1. **Access the Task**: Navigate to the provided URL
 2. **Enter Information**: Fill in participant ID, age, gender, and handedness
-3. **Practice Phase**: Complete 4 practice trials with feedback
-4. **Main Experiment**: Complete 9 blocks of 15 trials each
+3. **Respond Using Controls**: On keyboards press arrow keys; on touch devices use the on-screen D-pad
+4. **Practice Phase**: Complete 4 practice trials with feedback
+5. **Main Experiment**: Complete 9 blocks of 15 trials each
 ## Data Output
 
 The task generates a CSV file with the following columns:
