@@ -69,6 +69,38 @@
     /* Practice helpers */
     #practice-banner { display:none; }
     #practice-helper { display:none; margin-top:10px; font-size:14px; color:#555; }
+
+    /* Touchscreen D-pad */
+    .stimulus-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+    .stimulus-wrapper.left-handed {
+      flex-direction: row-reverse;
+    }
+    .dpad {
+      position: relative;
+      width: 180px;
+      height: 180px;
+      display: none;
+      touch-action: manipulation;
+    }
+    .dpad-button {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      font-size: 24px;
+      border-radius: 8px;
+      border: 1px solid #aaa;
+      background: #f0f0f0;
+    }
+    .dpad-button.up { left: 60px; top: 0; }
+    .dpad-button.left { left: 0; top: 60px; }
+    .dpad-button.down { left: 60px; top: 120px; }
+    .dpad-button.right { left: 120px; top: 60px; }
+    .dpad-button:active { background: #ddd; }
   </style>
 </head>
 <body>
@@ -133,9 +165,19 @@
       <!-- practice badge shown only during practice -->
       <div id="practice-banner" class="nav-type-header"></div>
 
-      <div class="stimulus-stage">
-        <img id="stimulus-image" src="" alt="Stimulus">
-        <div class="fixation" id="fixation" aria-hidden="true"></div>
+      <div id="stimulus-wrapper" class="stimulus-wrapper">
+        <div class="stimulus-stage">
+          <img id="stimulus-image" src="" alt="Stimulus">
+          <div class="fixation" id="fixation" aria-hidden="true"></div>
+        </div>
+
+        <!-- Touch controls -->
+        <div id="touch-controls" class="dpad">
+          <button class="dpad-button up" data-key="ArrowUp">&#9650;</button>
+          <button class="dpad-button left" data-key="ArrowLeft">&#9664;</button>
+          <button class="dpad-button down" data-key="ArrowDown">&#9660;</button>
+          <button class="dpad-button right" data-key="ArrowRight">&#9654;</button>
+        </div>
       </div>
 
       <!-- practice legend (practice only) -->
@@ -418,6 +460,10 @@ UP / DOWN / LEFT / RIGHT
 
       state.participantInfo = { id: assignedId, group, age, gender, handedness, timestamp: new Date().toISOString() };
 
+      // Position on-screen dpad based on handedness
+      const wrapper = document.getElementById('stimulus-wrapper');
+      wrapper.classList.toggle('left-handed', handedness === 'left');
+
       const cb = determineCounterbalance(assignedId);
       config.blocks = createBlockSequence(cb);
       state.usedStimuliTracker = {};
@@ -589,10 +635,12 @@ UP / DOWN / LEFT / RIGHT
 
       const img = document.getElementById('stimulus-image');
       const fix = document.getElementById('fixation');
+      const dpad = document.getElementById('touch-controls');
 
       window.focus();
       img.style.display = 'none';
       fix.style.display = 'block';
+      dpad.style.display = 'none';
       showScreen('stimulus-screen');
 
       setTimeout(()=> {
@@ -600,6 +648,7 @@ UP / DOWN / LEFT / RIGHT
         img.src = stimulus.file;
         img.style.display = 'block';
         state.stimulusOnsetTime = performance.now();
+        dpad.style.display = 'block';
 
         state.onKeyHandler = (e)=> {
           if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
@@ -634,6 +683,9 @@ UP / DOWN / LEFT / RIGHT
         document.removeEventListener('keydown', state.onKeyHandler);
         state.onKeyHandler = null;
       }
+
+      // hide touch controls after a response
+      document.getElementById('touch-controls').style.display = 'none';
 
       const map = { ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right', timeout:'none' };
       const response = map[key];
@@ -674,6 +726,16 @@ UP / DOWN / LEFT / RIGHT
         state.currentTrial += 1;
         setTimeout(()=> nextTrial(), config.itiDuration);
       }
+    }
+
+    function setupTouchControls(){
+      const dpad = document.getElementById('touch-controls');
+      dpad.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('touchstart', (e) => {
+          e.preventDefault();
+          handleResponse(btn.dataset.key);
+        }, { passive: false });
+      });
     }
 
     function showPracticeFeedback(ok, tooSlow){
@@ -764,6 +826,7 @@ UP / DOWN / LEFT / RIGHT
     // Enable start when form is complete (no mapping gating)
     document.addEventListener('DOMContentLoaded', () => {
       maybeEnableStart();
+      setupTouchControls();
     });
   </script>
 </body>
