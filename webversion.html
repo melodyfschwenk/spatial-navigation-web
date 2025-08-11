@@ -5,9 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Spatial Navigation Task</title>
 
-  <!-- Your mapping file. Either:
-       1) window.stimulusMapping = { easy:[], hard:[], control:[] }  OR
-       2) const stimulusMapping = { ... }  (top-level) -->
+  <!-- IMPORTANT: this must define a global `stimulusMapping` with
+       { easy: [...], hard: [...], control: [...] } -->
   <script src="stimulus_mappings.js"></script>
 
   <style>
@@ -26,7 +25,6 @@
     .screen { display: none; text-align: center; padding: 20px; }
     .screen.active { display: block; }
 
-    /* 500x500 centered stage */
     .stimulus-stage {
       width: 500px; height: 500px; margin: 0 auto; position: relative;
       display: flex; align-items: center; justify-content: center;
@@ -36,7 +34,6 @@
       object-fit: contain; border: 2px solid #ddd; display: none;
       pointer-events: none;
     }
-    /* crisp fixation cross */
     .fixation { position: absolute; width: 64px; height: 64px; display: none; }
     .fixation::before, .fixation::after {
       content: ""; position: absolute; background: #333; border-radius: 1px;
@@ -68,19 +65,10 @@
     }
 
     .hint { font-size: 12px; color: #666; font-style: italic; margin-top: 6px; }
-    #mapping-status { margin-top: 6px; font-size: 12px; display:none; }
-    #mapping-status.ready { color: #2e7d32; }
-    #mapping-status.wait  { color: #999; }
-    #mapping-status.err   { color: #c0392b; }
 
-    /* Practice-only helper under stage */
-    #practice-helper { display:none; margin-top:10px; font-size:14px; color:#555; }
-
-    /* Practice badge shown on stimulus screen (practice only) */
+    /* Practice helpers */
     #practice-banner { display:none; }
-
-    .debug { position: fixed; left: 8px; bottom: 8px; background: rgba(255,255,255,.9); border: 1px solid #eee; padding: 6px 8px; font-size: 11px; max-width: 320px; display: none; }
-    .debug.active { display: block; }
+    #practice-helper { display:none; margin-top:10px; font-size:14px; color:#555; }
   </style>
 </head>
 <body>
@@ -103,8 +91,6 @@
         </select>
       </div>
       <div id="group-desc" class="hint"></div>
-
-      <div id="mapping-status" class="hint wait">Stimuli: checking…</div>
 
       <div class="form-group">
         <label>Age:</label>
@@ -131,9 +117,8 @@
       </div>
 
       <button class="button" id="start-button" onclick="startExperiment()" disabled>
-        Loading stimuli…
+        Please select your group first
       </button>
-      <div class="hint" style="margin-top:8px;">If stimuli fail to load, check that <code>stimulus_mappings.js</code> defines <code>window.stimulusMapping</code> or <code>const stimulusMapping</code>.</div>
     </div>
 
     <!-- Instructions -->
@@ -162,20 +147,11 @@
       <div id="feedback-text" style="font-size:24px; margin: 20px;"></div>
       <button class="button" id="download-data" onclick="downloadData()" style="display:none;">Download Data</button>
     </div>
-
-    <div id="debug" class="debug"></div>
   </div>
 
   <script>
     /********* CONFIG *********/
     const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbzw_gLBsA5hY1dU7xZ1Fp67FptHEC9veo95vyId0bBOfu_QLMNFm02Rg0iRzURzx2Cn/exec';
-
-    const urlParams = new URLSearchParams(window.location.search);
-    const debugMode = urlParams.get('debug') === 'true';
-    if (debugMode) {
-      document.getElementById('debug').classList.add('active');
-      document.getElementById('mapping-status').style.display = 'block';
-    }
 
     const GROUP_DESCRIPTIONS = {
       DF: 'Deaf individuals who are fluent in sign language',
@@ -185,13 +161,14 @@
       HNS: 'Hearing individuals who do not know sign language'
     };
 
+    // Block plan mirrors your Python/earlier JS
     const config = {
       trialsPerBlock: 15,
       maxResponseTime: 3000,   // ms
       fixationDuration: 800,   // ms
       itiDuration: 400,        // ms (main task only)
       practiceTrials: 4,       // 2 ego + 2 allo
-      repetitions: 2,
+      repetitions: 2,          // each (ego/allo)×(easy/hard) twice
       navigationTypes: ['egocentric', 'allocentric'],
       difficultyLevels: ['easy', 'hard'],
       blocks: []
@@ -213,41 +190,6 @@
       allData: [],
       blockData: []
     };
-
-    let mappingReady = false;
-
-    /********* MAPPING HELPERS *********/
-    function getMapping(){
-      if (window.stimulusMapping) return window.stimulusMapping;
-      if (typeof stimulusMapping !== 'undefined') return stimulusMapping; // top-level const/let
-      return null;
-    }
-    function isMappingValid(obj){
-      if (!obj) return false;
-      const requiredBuckets = ['easy','hard']; // control optional
-      for (const k of requiredBuckets){
-        if (!Array.isArray(obj[k]) || obj[k].length === 0) return false;
-      }
-      const t = obj.easy[0];
-      return t && 'id' in t && 'file' in t && 'egocentric_correct' in t && 'allocentric_correct' in t;
-    }
-    async function waitForMappingIndefinite(){
-      const status = document.getElementById('mapping-status');
-      if (debugMode) { status.className = 'hint wait'; status.textContent = 'Stimuli: checking…'; }
-      // Keep polling silently until present
-      let ticks = 0;
-      while (!isMappingValid(getMapping())) {
-        await sleep(120);
-        ticks++;
-        if (debugMode && ticks % 20 === 0) status.textContent = 'Stimuli: still loading…';
-      }
-      mappingReady = true;
-      if (debugMode) {
-        const m = getMapping();
-        status.className = 'hint ready';
-        status.textContent = `Stimuli: ready (easy=${m.easy.length}, hard=${m.hard.length}${m.control ? ', control='+m.control.length : ''})`;
-      }
-    }
 
     /********* INSTRUCTIONS *********/
     const INSTRUCTIONS = {
@@ -336,11 +278,6 @@ UP / DOWN / LEFT / RIGHT
     }
     function hideInstructionContinue(){ document.getElementById('instruction-continue').style.display = 'none'; }
 
-    function debugLog(msg) {
-      if (!debugMode) return;
-      const d = document.getElementById('debug');
-      d.innerHTML = (new Date().toLocaleTimeString()) + ' — ' + msg + '<br>' + d.innerHTML;
-    }
     function updateProgress() {
       const el = document.getElementById('progress');
       if (state.isPractice) {
@@ -374,13 +311,11 @@ UP / DOWN / LEFT / RIGHT
       const jitter = Date.now()%1000;
       return new RNG(base*1000 + jitter);
     }
-
     function determineCounterbalance(participantId){
       const m = String(participantId).match(/\d+/);
       const n = m ? parseInt(m[0],10) : [...String(participantId)].reduce((a,c)=>a+c.charCodeAt(0),0);
       return (n % 4) + 1;
     }
-
     function createBlockSequence(counterbalance){
       const latin = [
         [['egocentric','easy'], ['egocentric','hard'], ['allocentric','easy'], ['allocentric','hard']],
@@ -393,11 +328,10 @@ UP / DOWN / LEFT / RIGHT
       for (let r=0; r<config.repetitions; r++){
         base.forEach(([n,d]) => seq.push({navType:n, difficulty:d}));
       }
-      seq.splice(4, 0, {navType:'control', difficulty:'control'}); // insert control
-      debugLog('Block sequence: ' + seq.map(b=>b.navType+'/'+b.difficulty).join(' | '));
+      // Insert a single control block mid-run
+      seq.splice(4, 0, {navType:'control', difficulty:'control'});
       return seq;
     }
-
     function ensureEnough(stimuli, need, rng){
       if (stimuli.length === 0) return [];
       let pool = [...stimuli];
@@ -408,14 +342,9 @@ UP / DOWN / LEFT / RIGHT
       pool = rng.shuffle(pool);
       return pool.slice(0, need);
     }
-
     function prepareBlockStimuli(navType, difficulty, blockIndex, rng, count){
-      const mapping = getMapping();
-      const bucket = mapping && mapping[difficulty];
-      if (!bucket || !bucket.length) {
-        console.error(`No stimuli for difficulty: ${difficulty}`);
-        return [];
-      }
+      const bucket = stimulusMapping && stimulusMapping[difficulty];
+      if (!bucket || !bucket.length) return [];
       const key = navType + '_' + difficulty;
       if (!state.usedStimuliTracker[key]) state.usedStimuliTracker[key] = new Set();
 
@@ -426,62 +355,51 @@ UP / DOWN / LEFT / RIGHT
 
       const chosen = ensureEnough(pool, count, rng);
       chosen.forEach(s => state.usedStimuliTracker[key].add(s.id));
-
-      debugLog(`Prepared block ${blockIndex+1} ${navType}/${difficulty} -> ${chosen.length}`);
       return chosen;
     }
-
     async function preloadImages(stimuli) {
       await Promise.all(stimuli.map(s => new Promise(res => {
-        const img = new Image();
-        img.onload = res; img.onerror = res; img.src = s.file;
+        const img = new Image(); img.onload = res; img.onerror = res; img.src = s.file;
       })));
     }
-
     async function saveToGoogleSheet(payload){
       try {
         const body = { action: 'saveTrial', ...payload, user_agent: navigator.userAgent };
         await fetch(GOOGLE_SHEET_URL, { method:'POST', mode:'no-cors',
           headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
-      } catch(e){ debugLog('saveToGoogleSheet failed (local-only)'); }
+      } catch(e){ /* silent */ }
     }
 
-    /********* UI HOOKS *********/
+    /********* FORM *********/
     function onGroupChange(){
       const group = document.getElementById('participant-group').value;
       const desc = document.getElementById('group-desc');
       desc.textContent = group ? (GROUP_DESCRIPTIONS[group] || '') : '';
       maybeEnableStart();
     }
-
     function maybeEnableStart(){
       const group = document.getElementById('participant-group').value;
       const age = document.getElementById('age').value;
       const gender = document.getElementById('gender').value;
       const handedness = document.getElementById('handedness').value;
       const startBtn = document.getElementById('start-button');
-
-      const ready = mappingReady && group && age && gender && handedness;
+      const ready = group && age && gender && handedness;
       startBtn.disabled = !ready;
-      startBtn.textContent = ready ? 'Start Experiment'
-                                   : (mappingReady ? 'Please complete the form' : 'Loading stimuli…');
+      startBtn.textContent = ready ? 'Start Experiment' : 'Please select your group first';
     }
 
+    /********* START *********/
     async function startExperiment(){
-      if (!mappingReady) {
-        // belt & suspenders: wait silently if they click right as mapping flips to ready
-        await waitForMappingIndefinite();
-      }
-
       const group = document.getElementById('participant-group').value;
       const age = document.getElementById('age').value;
       const gender = document.getElementById('gender').value;
       const handedness = document.getElementById('handedness').value;
       if (!group || !age || !gender || !handedness) return alert('Please fill in all required fields (Age, Gender, Handedness)');
 
-      const startBtn = document.getElementById('start-button');
-      startBtn.disabled = true; startBtn.textContent = 'Assigning ID...';
+      const btn = document.getElementById('start-button');
+      btn.disabled = true; btn.textContent = 'Assigning ID…';
 
+      // Try server → fallback locally; stays silent if server blocks CORS
       let assignedId;
       try {
         const res = await fetch(GOOGLE_SHEET_URL, {
@@ -489,12 +407,10 @@ UP / DOWN / LEFT / RIGHT
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action: 'nextIdLocked', groupCode: group })
         });
-        if (!res.ok) throw new Error('ID server responded ' + res.status);
         const data = await res.json();
-        if (!data.ok || !data.id) throw new Error(data.error || 'Bad response');
+        if (!data.ok || !data.id) throw new Error('Bad response');
         assignedId = data.id;
-      } catch(e){
-        debugLog('ID server failed: ' + e.message);
+      } catch {
         const bytes = new Uint8Array(8); crypto.getRandomValues(bytes);
         const hex = Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,8);
         assignedId = `${group}-tmp-${Date.now().toString(36)}-${hex}`;
@@ -506,7 +422,7 @@ UP / DOWN / LEFT / RIGHT
       config.blocks = createBlockSequence(cb);
       state.usedStimuliTracker = {};
 
-      // Practice intro (one Continue to begin)
+      // Practice intro
       const txt = document.getElementById('instruction-text');
       const head = document.getElementById('nav-type-indicator'); head.className=''; head.textContent='';
       txt.innerHTML = `
@@ -518,8 +434,7 @@ UP / DOWN / LEFT / RIGHT
       setInstructionContinue(()=> { state.isPractice = true; state.currentTrial = 0; runPracticeTrial(); });
       showScreen('instruction-screen');
 
-      // re-enable if they return
-      startBtn.disabled = false; startBtn.textContent = 'Start Experiment';
+      btn.disabled = false; btn.textContent = 'Start Experiment';
     }
 
     /********* PRACTICE HELPERS *********/
@@ -527,11 +442,8 @@ UP / DOWN / LEFT / RIGHT
       const banner = document.getElementById('practice-banner');
       const helper = document.getElementById('practice-helper');
 
-      if (!state.isPractice) {
-        banner.style.display = 'none';
-        helper.style.display = 'none';
-        return;
-      }
+      if (!state.isPractice) { banner.style.display = 'none'; helper.style.display = 'none'; return; }
+
       banner.className = `nav-type-header ${navType}-header`;
       banner.textContent = (navType === 'egocentric' ? 'PLAYER VIEW' : 'MAP VIEW') + ' practice';
       banner.style.display = 'inline-block';
@@ -541,7 +453,6 @@ UP / DOWN / LEFT / RIGHT
         ? 'Legend (practice only): UP=forward · DOWN=backward · LEFT=turn left · RIGHT=turn right'
         : 'Legend (practice only): UP=top · DOWN=bottom · LEFT=left · RIGHT=right';
     }
-
     async function showPracticeTypeBanner(navType, thenStartFn){
       const head = document.getElementById('nav-type-indicator');
       const txt  = document.getElementById('instruction-text');
@@ -570,7 +481,6 @@ UP / DOWN / LEFT / RIGHT
     function runPracticeTrial(){
       if (!state.isPractice) return;
 
-      // Completed practice?
       if (state.currentTrial >= config.practiceTrials) {
         state.isPractice = false;
         state.currentBlock = 0; state.currentTrial = 0;
@@ -586,24 +496,19 @@ UP / DOWN / LEFT / RIGHT
         return;
       }
 
-      // Determine practice type (first 2 = ego, next 2 = allo)
       const navType = state.currentTrial < 2 ? 'egocentric' : 'allocentric';
 
-      // On first trial of each type, show a 3→2→1 banner
       if (state.currentTrial === 0 || state.currentTrial === 2) {
         return showPracticeTypeBanner(navType, () => {
           setPracticeBadgeAndLegend(navType);
-          const m = getMapping();
-          const stim = m.easy[state.currentTrial % m.easy.length];
+          const stim = stimulusMapping.easy[state.currentTrial % stimulusMapping.easy.length];
           presentStimulus(stim, navType, 'practice');
           updateProgress();
         });
       }
 
-      // Otherwise, just present next practice trial
       setPracticeBadgeAndLegend(navType);
-      const m = getMapping();
-      const stim = m.easy[state.currentTrial % m.easy.length];
+      const stim = stimulusMapping.easy[state.currentTrial % stimulusMapping.easy.length];
       presentStimulus(stim, navType, 'practice');
       updateProgress();
     }
@@ -641,7 +546,7 @@ UP / DOWN / LEFT / RIGHT
       state.currentBlockStimuli = prepareBlockStimuli(block.navType, block.difficulty, state.currentBlock, rng, config.trialsPerBlock);
       state.currentTrial = 0; state.blockData = [];
 
-      // Hide practice badge/legend for main task
+      // Hide practice helpers
       document.getElementById('practice-banner').style.display = 'none';
       document.getElementById('practice-helper').style.display = 'none';
 
@@ -650,10 +555,9 @@ UP / DOWN / LEFT / RIGHT
     }
 
     function nextTrial(){
-      if (state.isPractice) return; // practice drives itself
+      if (state.isPractice) return;
 
       if (state.currentTrial >= config.trialsPerBlock) {
-        // end of block
         state.allData.push(...state.blockData);
         state.currentBlock++;
         if (state.currentBlock >= config.blocks.length) {
@@ -667,14 +571,12 @@ UP / DOWN / LEFT / RIGHT
       const block = config.blocks[state.currentBlock];
       const stim = state.currentBlockStimuli[state.currentTrial];
       if (!stim) {
-        debugLog('Missing stimulus at idx ' + state.currentTrial + ' — skipping');
         state.currentTrial++;
         return nextTrial();
       }
 
       presentStimulus(stim, block.navType, block.difficulty);
       updateProgress();
-      // increment after logging response
     }
 
     /********* PRESENT & RESPOND *********/
@@ -688,7 +590,7 @@ UP / DOWN / LEFT / RIGHT
       const img = document.getElementById('stimulus-image');
       const fix = document.getElementById('fixation');
 
-      window.focus();  // ensure key events go here
+      window.focus();
       img.style.display = 'none';
       fix.style.display = 'block';
       showScreen('stimulus-screen');
@@ -699,7 +601,6 @@ UP / DOWN / LEFT / RIGHT
         img.style.display = 'block';
         state.stimulusOnsetTime = performance.now();
 
-        // One-time key handler + timeout
         state.onKeyHandler = (e)=> {
           if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
           handleResponse(e);
@@ -721,7 +622,6 @@ UP / DOWN / LEFT / RIGHT
       const valid = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','timeout'];
       const key = event.key || event;
       if (!valid.includes(key)) {
-        // re-arm listener if non-task key pressed
         document.addEventListener('keydown', state.onKeyHandler = (e)=> {
           if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
           handleResponse(e);
@@ -740,7 +640,6 @@ UP / DOWN / LEFT / RIGHT
       const tooSlow = (key === 'timeout');
       const rt = tooSlow ? null : Math.round(performance.now() - state.stimulusOnsetTime);
 
-      // Score against correct mapping for the current nav type
       let correct;
       if (state.currentNavType === 'egocentric')
         correct = state.currentStimulus.egocentric_correct;
@@ -785,7 +684,6 @@ UP / DOWN / LEFT / RIGHT
       dl.style.display = 'none';
       showScreen('feedback-screen');
 
-      // Block stray keypresses during feedback
       const blockKeys = (e)=> e.stopPropagation();
       document.addEventListener('keydown', blockKeys, true);
 
@@ -858,16 +756,13 @@ UP / DOWN / LEFT / RIGHT
     }
 
     /********* INIT *********/
-    window.addEventListener('DOMContentLoaded', async () => {
-      // stop page-scroll on arrow keys (defensive)
-      window.addEventListener('keydown', (e) => {
-        if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
-          e.preventDefault();
-        }
-      }, { passive:false });
+    // Prevent page scroll on arrow keys
+    window.addEventListener('keydown', (e) => {
+      if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+    }, { passive:false });
 
-      // Silently wait for stimuli (no participant error). Status only in debug mode.
-      await waitForMappingIndefinite();
+    // Enable start when form is complete (no mapping gating)
+    document.addEventListener('DOMContentLoaded', () => {
       maybeEnableStart();
     });
   </script>
