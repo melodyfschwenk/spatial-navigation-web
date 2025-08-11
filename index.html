@@ -4,6 +4,24 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spatial Navigation Task - Sign Language Research</title>
+
+       <script>
+        // Check if we're embedded
+        if (window !== window.top) {
+            // Check if parent is from your study domain
+            try {
+                const parentUrl = document.referrer;
+                if (parentUrl.includes('melodyfschwenk.github.io')) {
+                    // We're embedded in the main study, skip to task
+                    window.location.replace('webversion.html');
+                }
+            } catch(e) {
+                // Cross-origin, assume it's embedded and redirect
+                window.location.replace('webversion.html');
+            }
+        }
+    </script>
+    
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
