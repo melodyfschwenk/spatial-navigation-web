@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Spatial Navigation Task</title>
   <style>
-    /* Base layout, same look and feel */
+    /* Base layout */
     body {
       margin: 0;
       padding: 0;
@@ -26,11 +26,11 @@
       justify-content: center;
       align-items: center;
       background: white;
-      position: relative; /* needed for absolute screens */
+      position: relative;
       overflow: hidden;
     }
 
-    /* Screen system: animated visibility instead of display none */
+    /* Screens */
     .screen {
       position: absolute;
       inset: 0;
@@ -40,7 +40,6 @@
       align-items: center;
       padding: 20px;
       text-align: center;
-
       opacity: 0;
       visibility: hidden;
       transform: translateY(6px);
@@ -54,7 +53,7 @@
       transition: opacity 200ms ease, transform 200ms ease, visibility 0s;
     }
 
-    /* Fixed 500x500 stage, centered */
+    /* Fixed 500x500 stage */
     .stimulus-stage {
       width: 500px;
       height: 500px;
@@ -64,40 +63,59 @@
       justify-content: center;
     }
 
-    /* Image fully fills the stage, no layout shift when hidden */
+    /* Image */
     #stimulus-image {
       position: absolute;
-      inset: 0;                /* top/right/bottom/left: 0 */
+      inset: 0;
       width: 100%;
       height: 100%;
-      object-fit: contain;     /* keep original aspect inside 500x500 */
+      object-fit: contain;
       border: 2px solid #ddd;
-      box-sizing: border-box;  /* keep border inside the 500x500 footprint */
-      opacity: 0;              /* crossfade */
+      box-sizing: border-box;
+      opacity: 0;
       transition: opacity 150ms ease;
       will-change: opacity;
-      pointer-events: none;    /* never steals focus/clicks */
+      pointer-events: none;
     }
     #stimulus-image.show { opacity: 1; }
 
-    /* Fixation perfectly centered in the same stage footprint */
+    /* Fixation */
     .fixation {
       position: absolute;
       inset: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      opacity: 0;              /* crossfade */
+      opacity: 0;
       transition: opacity 120ms ease;
       will-change: opacity;
       pointer-events: none;
     }
     .fixation.show { opacity: 1; }
 
-    /* Respect reduced motion */
+    /* Trial feedback overlay (no screen switch) */
+    .trial-feedback {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 22px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      background: rgba(255,255,255,0.95);
+      border: 1px solid #e0e0e0;
+      opacity: 0;
+      transition: opacity 120ms ease;
+      pointer-events: none;
+    }
+    .trial-feedback.show { opacity: 1; }
+    .trial-feedback.correct { color: #1b5e20; border-color: #c8e6c9; }
+    .trial-feedback.incorrect { color: #b71c1c; border-color: #ffcdd2; }
+
+    /* Reduced motion */
     @media (prefers-reduced-motion: reduce) {
       .screen { transition: none; transform: none; }
-      #stimulus-image, .fixation { transition: none; }
+      #stimulus-image, .fixation, .trial-feedback { transition: none; }
     }
 
     .instruction-text {
@@ -228,11 +246,11 @@
       </button>
     </div>
 
-    <!-- Instruction Screen -->
+    <!-- Instruction Screen (also used after practice) -->
     <div id="instruction-screen" class="screen">
       <div id="nav-type-indicator"></div>
       <div class="instruction-text" id="instruction-text"></div>
-      <button class="button" onclick="startBlock()">Continue</button>
+      <button class="button" id="instruction-continue" onclick="startBlock()">Continue</button>
     </div>
 
     <!-- Stimulus Screen -->
@@ -246,13 +264,24 @@
             <line x1="10" y1="32" x2="54" y2="32" stroke="#333" stroke-width="4" stroke-linecap="round"/>
           </svg>
         </div>
+        <div id="trial-feedback" class="trial-feedback" aria-live="polite"></div>
       </div>
     </div>
 
-    <!-- Feedback or Completion Screen -->
+    <!-- Pause Screen (Esc) -->
+    <div id="pause-screen" class="screen">
+      <h2>Paused</h2>
+      <p class="instruction-text">You can take a short break. Press Resume to continue or Quit to end now.</p>
+      <div>
+        <button class="button" onclick="resumeFromPause()">Resume</button>
+        <button class="button" style="background:#d32f2f" onclick="quitStudy()">Quit</button>
+      </div>
+    </div>
+
+    <!-- Completion / Download Screen -->
     <div id="feedback-screen" class="screen">
       <div id="feedback-text" style="font-size: 24px; margin: 20px;"></div>
-      <button class="button" id="continue-button" onclick="nextTrial()">Continue</button>
+      <button class="button" id="continue-button" style="display:none" onclick="nextTrial()">Continue</button>
       <button class="button" id="download-data" onclick="downloadData()">Download Data</button>
     </div>
 
@@ -295,7 +324,7 @@
     const config = {
       trialsPerBlock: 15,
       maxResponseTime: 3000,
-      feedbackDuration: 500,
+      feedbackDuration: 300,    // faster in-trial feedback
       fixationDuration: 800,
       practiceTrials: 4,
       blocks: [],
@@ -317,35 +346,26 @@
       currentStimulus: null,
       currentNavType: null,
       currentDifficulty: null,
-      responseTimeout: null
+      responseTimeout: null,
+      paused: false
     };
 
-    // ---------- Smoothness helpers ----------
-    const SCREENS = ['data-entry-screen', 'instruction-screen', 'stimulus-screen', 'feedback-screen'];
-
+    const SCREENS = ['data-entry-screen', 'instruction-screen', 'stimulus-screen', 'pause-screen', 'feedback-screen'];
     function switchScreen(id) {
       SCREENS.forEach(sid => {
         const el = document.getElementById(sid);
         if (!el) return;
-        if (sid === id) el.classList.add('active');
-        else el.classList.remove('active');
+        if (sid === id) el.classList.add('active'); else el.classList.remove('active');
       });
     }
 
     function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+    function nextFrame() { return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); }
 
-    // Two RAFs to let the browser commit style changes before we add classes
-    function nextFrame() {
-      return new Promise(r => requestAnimationFrame(() =>
-        requestAnimationFrame(r)
-      ));
-    }
-
-    // Image cache for preloading
+    // Image cache
     const imageCache = new Map();
 
     async function getUniqueIdFromServer(groupCode) {
-      // Use text/plain to avoid a CORS preflight. Apps Script will still parse JSON.
       const res = await fetch(GOOGLE_SHEET_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -354,11 +374,10 @@
       if (!res.ok) throw new Error('ID server responded ' + res.status);
       const data = await res.json();
       if (!data.ok || !data.id) throw new Error(data.error || 'Bad response');
-      return data.id; // e.g., "DF-online-007"
+      return data.id;
     }
 
     function fallbackLocalId(groupCode) {
-      // Practically unique if offline - includes time and cryptographic random
       const bytes = new Uint8Array(8);
       crypto.getRandomValues(bytes);
       const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 8);
@@ -372,17 +391,13 @@
         const img = new Image();
         img.src = src;
         imageCache.set(src, img);
-        if (typeof img.decode === 'function') {
-          return img.decode().catch(() => {});
-        }
+        if (typeof img.decode === 'function') return img.decode().catch(() => {});
         return new Promise(res => { img.onload = res; img.onerror = res; });
       });
       await Promise.all(promises);
       if (debugMode) updateDebugInfo(`Preloaded ${stimuli.length} images`);
     }
-    // ---------- end smoothness helpers ----------
 
-    // RNG utilities
     class RandomGenerator {
       constructor(seed) { this.seed = seed; }
       random() {
@@ -414,8 +429,6 @@
         groupDesc.textContent = groupDescriptions[groupSelect.value];
         startButton.disabled = false;
         startButton.textContent = 'Start Experiment';
-
-        // Ensure the old ID display stays hidden
         const idDisplay = document.getElementById('participant-id-display');
         if (idDisplay) idDisplay.style.display = 'none';
       } else {
@@ -444,26 +457,17 @@
         blocks.push({ navType, difficulty });
       });
       blocks.splice(4, 0, { navType: 'control', difficulty: 'control' });
-
-      if (debugMode) {
-        console.log('Counterbalance:', cb);
-        console.log('Block sequence:', blocks);
-      }
       return blocks;
     }
 
     function prepareBlockStimuli(navType, difficulty, blockIndex) {
       if (typeof stimulusMapping === 'undefined') {
-        console.error('Stimulus mappings not loaded!');
         alert('Error: Stimulus files not loaded. Please refresh the page.');
         return [];
       }
       const rng = createRandomGenerator(state.participantInfo.id + '_block' + blockIndex);
       let availableStimuli = [...(stimulusMapping[difficulty] || [])];
-      if (availableStimuli.length === 0) {
-        console.error(`No stimuli found for difficulty: ${difficulty}`);
-        return [];
-      }
+      if (availableStimuli.length === 0) return [];
 
       const conditionKey = `${navType}_${difficulty}`;
       if (!state.usedStimuliTracker[conditionKey]) state.usedStimuliTracker[conditionKey] = [];
@@ -471,21 +475,12 @@
 
       const unused = availableStimuli.filter(s => !usedInCondition.some(u => u.id === s.id));
       const used = availableStimuli.filter(s => usedInCondition.some(u => u.id === s.id));
-
       let pool = unused.length >= config.trialsPerBlock ? unused : [...unused, ...used];
       for (let i = 0; i < 5; i++) pool = rng.shuffle(pool);
 
       const selected = pool.slice(0, config.trialsPerBlock);
       const finalStimuli = rng.shuffle(selected);
-
-      finalStimuli.forEach(stim => {
-        if (!usedInCondition.some(u => u.id === stim.id)) usedInCondition.push(stim);
-      });
-
-      if (debugMode) {
-        const ids = finalStimuli.map(s => s.id.split('_').pop());
-        updateDebugInfo(`Block ${blockIndex} prepared: ${ids.slice(0,5).join(', ')}...`);
-      }
+      finalStimuli.forEach(stim => { if (!usedInCondition.some(u => u.id === stim.id)) usedInCondition.push(stim); });
       return finalStimuli;
     }
 
@@ -498,7 +493,6 @@
 
     async function saveToGoogleSheet(payload) {
       try {
-        // Always label the action explicitly
         const body = { action: 'saveTrial', ...payload, user_agent: navigator.userAgent };
         await fetch(GOOGLE_SHEET_URL, {
           method: 'POST',
@@ -536,35 +530,17 @@
       const handedness = document.getElementById('handedness').value;
 
       if (!group) { alert('Please select your participant group first'); return; }
-      if (!age || !gender || !handedness) {
-        alert('Please fill in all required fields (Age, Gender, Handedness)');
-        return;
-      }
+      if (!age || !gender || !handedness) { alert('Please fill in all required fields (Age, Gender, Handedness)'); return; }
 
-      // Briefly lock the button while we reserve the ID
       const startButton = document.getElementById('start-button');
       startButton.disabled = true;
       startButton.textContent = 'Assigning ID...';
 
       let assignedId;
-      try {
-        assignedId = await getUniqueIdFromServer(group);
-      } catch (err) {
-        console.warn('ID server failed, generating offline-safe temporary ID:', err);
-        assignedId = fallbackLocalId(group);
-      }
+      try { assignedId = await getUniqueIdFromServer(group); }
+      catch (err) { console.warn('ID server failed, using temp ID:', err); assignedId = fallbackLocalId(group); }
 
-      // Store participant info (ID is not shown to the participant)
-      state.participantInfo = {
-        id: assignedId,
-        group,
-        age,
-        gender,
-        handedness,
-        timestamp: new Date().toISOString()
-      };
-
-      // Generate blocks, reset trackers, and move to practice
+      state.participantInfo = { id: assignedId, group, age, gender, handedness, timestamp: new Date().toISOString() };
       config.blocks = generateBlockSequence(state.participantInfo.id);
       state.usedStimuliTracker = {};
       state.isPractice = true;
@@ -572,7 +548,6 @@
       showPracticeInstructions();
       document.getElementById('data-entry-screen').classList.remove('active');
 
-      // Restore button text for safety if they come back
       startButton.disabled = false;
       startButton.textContent = 'Start Experiment';
     }
@@ -584,17 +559,33 @@
       document.getElementById('nav-type-indicator').textContent = '';
       instructionText.innerHTML = `
         <h3>Practice Phase</h3>
-        <p>You will now practice the two navigation types:</p>
+        <p>You will practice two navigation types:</p>
         <p><strong>PLAYER VIEW:</strong> Navigate as if you are the player<br>
         UP = forward, DOWN = backward, LEFT or RIGHT = turn</p>
         <p><strong>MAP VIEW:</strong> Navigate using map directions<br>
         UP = north, DOWN = south, LEFT = west, RIGHT = east</p>
-        <p>Press Continue to start practice trials.</p>
+        <p>Practice auto-advances. Press <strong>Esc</strong> anytime to pause.</p>
       `;
       switchScreen('instruction-screen');
     }
 
-    // Block instructions
+    // After practice, show a single Continue to main task
+    function showPracticeComplete() {
+      state.isPractice = false; // so Continue starts main task
+      const instructionText = document.getElementById('instruction-text');
+      const navIndicator = document.getElementById('nav-type-indicator');
+      navIndicator.className = '';
+      navIndicator.textContent = '';
+      instructionText.innerHTML = `
+        <h3>Practice Complete</h3>
+        <p>Great job! The main task will begin next.</p>
+        <p>You can take a short break now. Press <strong>Continue</strong> when you're ready.</p>
+        <p>Remember: You can press <strong>Esc</strong> between trials or at block breaks to pause.</p>
+      `;
+      switchScreen('instruction-screen');
+    }
+
+    // Block instructions (continue between blocks)
     function showBlockInstructions() {
       const block = config.blocks[state.currentBlock];
       const instructionText = document.getElementById('instruction-text');
@@ -608,69 +599,63 @@
       const instructions = {
         egocentric: `Navigate from the gray player to the red stop sign.<br><br>
                      Use arrow keys as if YOU are the player:<br>
-                     UP = Move forward<br>
-                     DOWN = Move backward<br>
-                     LEFT = Turn left<br>
-                     RIGHT = Turn right`,
+                     UP = forward, DOWN = backward, LEFT = turn left, RIGHT = turn right`,
         allocentric: `Navigate from the gray player to the red stop sign.<br><br>
                       Use arrow keys for map directions:<br>
-                      UP = Move north (top of screen)<br>
-                      DOWN = Move south (bottom)<br>
-                      LEFT = Move west (left side)<br>
-                      RIGHT = Move east (right side)`,
+                      UP = north, DOWN = south, LEFT = west, RIGHT = east`,
         control: `Follow the arrows shown.<br><br>
                   Press the arrow key matching the FIRST arrow from the player.`
       };
-      instructionText.innerHTML = instructions[block.navType];
+      instructionText.innerHTML = `
+        ${instructions[block.navType]}
+        <p style="margin-top:12px;color:#666;font-size:14px;">Trials auto-advance. Press <strong>Esc</strong> to pause at any time.</p>
+      `;
       updateProgress();
       switchScreen('instruction-screen');
     }
 
-    // Start current block, with preloading
+    // Start current block
     async function startBlock() {
-      switchScreen('instruction-screen'); // keeps continuity while we prep
-
       if (state.isPractice) {
         state.currentTrial = 0;
         state.blockData = [];
-        state.isPractice = true;
-        await sleep(150); // tiny pause so the button press does not feel jarring
+        await sleep(150);
         runPracticeTrial();
         return;
       }
-
       const block = config.blocks[state.currentBlock];
       state.currentBlockStimuli = prepareBlockStimuli(block.navType, block.difficulty, state.currentBlock);
       state.currentTrial = 0;
       state.blockData = [];
-
-      // Preload images for this block before first trial for smooth first paint
       await preloadBlockImages(state.currentBlockStimuli);
-
       await sleep(150);
-      nextTrial(); // will show first stimulus smoothly
+      nextTrial();
     }
 
-    // Practice trial runner
+    // Practice trial runner (no continue buttons, auto-advance)
     function runPracticeTrial() {
       if (state.currentTrial >= config.practiceTrials) {
-        state.isPractice = false;
-        state.currentBlock = 0;
-        showBlockInstructions();
+        showPracticeComplete();
         return;
       }
       const navType = state.currentTrial < 2 ? 'egocentric' : 'allocentric';
       const stimuli = stimulusMapping.easy;
       const stimulus = stimuli[state.currentTrial % stimuli.length];
       presentStimulus(stimulus, navType, 'practice');
+      // increment happens in showFeedback()
     }
 
     // Present stimulus with crossfade from fixation
     async function presentStimulus(stimulus, navType, difficulty) {
       const stimulusImage = document.getElementById('stimulus-image');
       const fixation = document.getElementById('fixation');
+      const trialFeedback = document.getElementById('trial-feedback');
 
-      // Set image src from cache if present
+      // Clear in-place feedback
+      trialFeedback.className = 'trial-feedback';
+      trialFeedback.textContent = '';
+
+      // Image source (preloaded if available)
       const cached = imageCache.get(stimulus.file);
       stimulusImage.src = cached ? cached.src : stimulus.file;
 
@@ -681,27 +666,56 @@
       switchScreen('stimulus-screen');
       updateProgress();
 
-      // Fade fixation in
       await nextFrame();
-      fixation.classList.add('show');
-
-      // Hold fixation
+      fixation.classList.add('show');             // fixation in
       await sleep(config.fixationDuration);
-
-      // Crossfade to stimulus
-      fixation.classList.remove('show');
+      fixation.classList.remove('show');          // crossfade
       await nextFrame();
-      stimulusImage.classList.add('show');
+      stimulusImage.classList.add('show');        // stimulus in
 
-      // Set state and start response window
+      // Arm state and response window
       state.stimulusOnsetTime = performance.now();
       state.trialStartTime = performance.now();
       state.currentStimulus = stimulus;
       state.currentNavType = navType;
       state.currentDifficulty = difficulty;
 
+      // Response handler
       document.addEventListener('keydown', handleResponse, { once: true });
       state.responseTimeout = setTimeout(() => handleResponse({ key: 'timeout' }), config.maxResponseTime);
+    }
+
+    // Pause handling (Esc)
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        showPause();
+      }
+    });
+
+    function showPause() {
+      if (state.paused) return;
+      state.paused = true;
+      clearTimeout(state.responseTimeout);
+      // Remove pending one-time response listener by adding a dummy one (safe guard)
+      document.addEventListener('keydown', () => {}, { once: true });
+      switchScreen('pause-screen');
+    }
+
+    function resumeFromPause() {
+      state.paused = false;
+      // Re-present the current trial cleanly
+      if (state.currentStimulus) {
+        presentStimulus(state.currentStimulus, state.currentNavType, state.currentDifficulty);
+      } else {
+        // If paused at an instruction/break screen, just go back there
+        switchScreen('instruction-screen');
+      }
+    }
+
+    function quitStudy() {
+      // Optional: append a summary row then show completion
+      showCompletion(true);
     }
 
     // Handle keyboard response
@@ -709,7 +723,7 @@
       const validKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'timeout'];
       let responseKey = event.key || event;
       if (!validKeys.includes(responseKey)) {
-        // if wrong key, keep listening until timeout
+        // keep listening until timeout
         document.addEventListener('keydown', handleResponse, { once: true });
         return;
       }
@@ -717,12 +731,7 @@
       clearTimeout(state.responseTimeout);
 
       const rt = responseKey === 'timeout' ? null : Math.round(performance.now() - state.stimulusOnsetTime);
-
-      const responseMap = {
-        'ArrowUp': 'up', 'ArrowDown': 'down',
-        'ArrowLeft': 'left', 'ArrowRight': 'right',
-        'timeout': 'none'
-      };
+      const responseMap = { 'ArrowUp': 'up', 'ArrowDown': 'down', 'ArrowLeft': 'left', 'ArrowRight': 'right', 'timeout': 'none' };
       const response = responseMap[responseKey];
 
       const correct = state.currentNavType === 'egocentric'
@@ -753,28 +762,28 @@
       showFeedback(accuracy);
     }
 
-    // Fade out image, then feedback or next trial
+    // In-place feedback, then auto-advance
     async function showFeedback(accuracy) {
       const stimulusImage = document.getElementById('stimulus-image');
-      stimulusImage.classList.remove('show'); // quick fade out
-      await sleep(120);
+      const trialFeedback = document.getElementById('trial-feedback');
+
+      // Quick end-of-trial fade and feedback tag
+      stimulusImage.classList.remove('show');
+      trialFeedback.textContent = accuracy ? 'Correct' : 'Incorrect';
+      trialFeedback.classList.add('show', accuracy ? 'correct' : 'incorrect');
+
+      // Advance timing
+      await sleep(state.isPractice ? 900 : config.feedbackDuration);
 
       if (state.isPractice) {
-        const feedbackText = document.getElementById('feedback-text');
-        feedbackText.textContent = accuracy ? 'Correct!' : 'Incorrect';
-        feedbackText.style.color = accuracy ? 'green' : 'red';
-        switchScreen('feedback-screen');
-        await sleep(900);
         state.currentTrial++;
         runPracticeTrial();
       } else {
-        // Short ITI feel before next trial
-        await sleep(config.feedbackDuration);
         nextTrial();
       }
     }
 
-    // Next trial with fixed indexing
+    // Next trial (no continue buttons between trials)
     function nextTrial() {
       const total = config.trialsPerBlock;
 
@@ -785,7 +794,7 @@
         if (state.currentBlock >= config.blocks.length) {
           showCompletion();
         } else {
-          showBlockInstructions();
+          showBlockInstructions(); // natural break with Continue
         }
         return;
       }
@@ -800,7 +809,7 @@
       }
 
       presentStimulus(stimulus, block.navType, block.difficulty);
-      state.currentTrial++; // increment after scheduling present
+      state.currentTrial++; // increment after presenting
     }
 
     function updateProgress() {
@@ -811,20 +820,23 @@
       progress.textContent = `Block ${b} | Trial ${t}`;
     }
 
-    async function showCompletion() {
+    async function showCompletion(aborted=false) {
       const feedbackText = document.getElementById('feedback-text');
-      const continueButton = document.getElementById('continue-button');
       const downloadButton = document.getElementById('download-data');
 
       const totalCorrect = state.allData.filter(d => d.accuracy === 1).length;
-      const accuracy = (totalCorrect / state.allData.length * 100).toFixed(1);
+      const accuracy = state.allData.length ? (totalCorrect / state.allData.length * 100).toFixed(1) : '—';
 
-      await saveExperimentSummary();
+      if (!aborted) await saveExperimentSummary();
 
-      feedbackText.innerHTML = `
+      feedbackText.innerHTML = aborted ? `
+        <h2>Session Ended</h2>
+        <p>You ended the session early.</p>
+        <p>Data recorded so far can be downloaded below.</p>
+        <p>Participant ID: ${state.participantInfo.id}</p>
+      ` : `
         <h2>Experiment Complete!</h2>
         <p>Thank you for participating.</p>
-        <p>Your data has been automatically saved.</p>
         <p>Overall accuracy: ${accuracy}%</p>
         <p>Participant ID: ${state.participantInfo.id}</p>
         <hr style="margin: 20px 0;">
@@ -833,7 +845,6 @@
       `;
       feedbackText.style.color = '#333';
 
-      continueButton.style.display = 'none';
       downloadButton.style.display = 'inline-block';
       switchScreen('feedback-screen');
     }
