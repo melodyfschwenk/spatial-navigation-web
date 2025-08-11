@@ -70,7 +70,7 @@
     #practice-banner { display:none; }
     #practice-helper { display:none; margin-top:10px; font-size:14px; color:#555; }
 
-    /* Touchscreen D-pad */
+    /* Touchscreen D-pad - Hidden by default, only shown on mobile/tablet */
     .dpad {
       position: absolute;
       bottom: 80px;
@@ -174,7 +174,7 @@
       <button class="button" id="download-data" onclick="downloadData()" style="display:none;">Download Data</button>
     </div>
 
-    <!-- Touch controls -->
+    <!-- Touch controls - Only visible on mobile/tablet devices -->
     <div id="touch-controls" class="dpad right-handed">
       <button class="dpad-button up" data-key="ArrowUp">&#9650;</button>
       <button class="dpad-button left" data-key="ArrowLeft">&#9664;</button>
@@ -195,8 +195,23 @@
       HNS: 'Hearing individuals who do not know sign language'
     };
 
-    // Detect mobile/touch devices to conditionally show on-screen controls
-    const isMobile = /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    // Enhanced mobile/tablet detection
+    const isMobile = (() => {
+      // Check for touch capability
+      const hasTouch = ('ontouchstart' in window) || 
+                      (navigator.maxTouchPoints > 0) || 
+                      (navigator.msMaxTouchPoints > 0);
+      
+      // Check user agent for mobile/tablet devices
+      const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Tablet/i;
+      const isMobileUA = mobileRegex.test(navigator.userAgent);
+      
+      // Check screen size (tablets can be up to 1024px wide)
+      const isSmallScreen = window.innerWidth <= 1024;
+      
+      // Only consider it mobile/tablet if it has touch AND (mobile UA OR small screen)
+      return hasTouch && (isMobileUA || isSmallScreen);
+    })();
 
     // Block plan mirrors your Python/earlier JS
     const config = {
@@ -455,24 +470,31 @@ UP / DOWN / LEFT / RIGHT
 
       state.participantInfo = { id: assignedId, group, age, gender, handedness, timestamp: new Date().toISOString() };
 
-      // Position on-screen dpad based on handedness
-      const dpad = document.getElementById('touch-controls');
-      dpad.classList.toggle('left-handed', handedness === 'left');
-      dpad.classList.toggle('right-handed', handedness !== 'left');
+      // Position on-screen dpad based on handedness (only if mobile)
+      if (isMobile) {
+        const dpad = document.getElementById('touch-controls');
+        dpad.classList.toggle('left-handed', handedness === 'left');
+        dpad.classList.toggle('right-handed', handedness !== 'left');
+      }
 
       const cb = determineCounterbalance(assignedId);
       config.blocks = createBlockSequence(cb);
       state.usedStimuliTracker = {};
 
-      // Practice intro
+      // Practice intro - mention controls based on device type
       const txt = document.getElementById('instruction-text');
       const head = document.getElementById('nav-type-indicator'); head.className=''; head.textContent='';
+      const controlInfo = isMobile 
+        ? '<p>You will use the on-screen arrow buttons to respond.</p>'
+        : '<p>You will use your keyboard arrow keys to respond.</p>';
+      
       txt.innerHTML = `
         <h3>Practice Phase</h3>
         <p>You will practice two quick examples of each navigation type.</p>
         <p><strong>PLAYER VIEW</strong>: act as if you are the player (UP=forward, DOWN=backward, LEFT/RIGHT=turn)</p>
         <p><strong>MAP VIEW</strong>: use map directions (UP=top, DOWN=bottom, LEFT=west, RIGHT=east)</p>
-        <p>Press Continue when you’re ready to start practice.</p>`;
+        ${controlInfo}
+        <p>Press Continue when you're ready to start practice.</p>`;
       setInstructionContinue(()=> { state.isPractice = true; state.currentTrial = 0; runPracticeTrial(); });
       showScreen('instruction-screen');
 
@@ -565,15 +587,17 @@ UP / DOWN / LEFT / RIGHT
       head.className = `nav-type-header ${block.navType}-header`;
       head.textContent = name;
 
+      const controlMethod = isMobile ? 'on-screen arrow buttons' : 'arrow keys';
+      
       const msg = {
         egocentric: `Navigate from the gray player to the red stop sign.<br><br>
-                     Use arrow keys as if YOU are the player:<br>
+                     Use ${controlMethod} as if YOU are the player:<br>
                      UP=forward, DOWN=backward, LEFT=turn left, RIGHT=turn right`,
         allocentric:`Navigate from the gray player to the red stop sign.<br><br>
-                     Use arrow keys as map directions:<br>
+                     Use ${controlMethod} as map directions:<br>
                      UP=top, DOWN=bottom, LEFT=west, RIGHT=east`,
         control:    `Follow the arrows shown.<br><br>
-                     Press the arrow key matching the FIRST arrow from the player.`
+                     Press the ${controlMethod === 'arrow keys' ? 'arrow key' : 'arrow button'} matching the FIRST arrow from the player.`
       };
       txt.innerHTML = msg[block.navType];
 
@@ -621,34 +645,36 @@ UP / DOWN / LEFT / RIGHT
       updateProgress();
     }
 
-      /********* PRESENT & RESPOND *********/
-      function presentStimulus(stimulus, navType, difficulty){
-        state.currentStimulus = stimulus;
-        state.currentNavType = navType;
-        state.currentDifficulty = difficulty;
+    /********* PRESENT & RESPOND *********/
+    function presentStimulus(stimulus, navType, difficulty){
+      state.currentStimulus = stimulus;
+      state.currentNavType = navType;
+      state.currentDifficulty = difficulty;
 
-        if (state.isPractice) setPracticeBadgeAndLegend(navType);
+      if (state.isPractice) setPracticeBadgeAndLegend(navType);
 
-        const img = document.getElementById('stimulus-image');
-        const fix = document.getElementById('fixation');
-        const dpad = document.getElementById('touch-controls');
+      const img = document.getElementById('stimulus-image');
+      const fix = document.getElementById('fixation');
+      const dpad = document.getElementById('touch-controls');
 
-        window.focus();
-        img.style.display = 'none';
-        fix.style.display = 'block';
-        dpad.style.display = 'none';
-        showScreen('stimulus-screen');
+      window.focus();
+      img.style.display = 'none';
+      fix.style.display = 'block';
+      dpad.style.display = 'none'; // Always hide initially
+      showScreen('stimulus-screen');
 
-        setTimeout(()=> {
-          fix.style.display = 'none';
-          img.src = stimulus.file;
-          img.style.display = 'block';
-          state.stimulusOnsetTime = performance.now();
-          if (isMobile) {
-            dpad.style.display = 'block';
-          }
+      setTimeout(()=> {
+        fix.style.display = 'none';
+        img.src = stimulus.file;
+        img.style.display = 'block';
+        state.stimulusOnsetTime = performance.now();
+        
+        // Only show D-pad on mobile/tablet devices
+        if (isMobile) {
+          dpad.style.display = 'block';
+        }
 
-          state.onKeyHandler = (e)=> {
+        state.onKeyHandler = (e)=> {
           if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
           handleResponse(e);
         };
@@ -682,7 +708,7 @@ UP / DOWN / LEFT / RIGHT
         state.onKeyHandler = null;
       }
 
-      // hide touch controls after a response
+      // Always hide touch controls after a response
       document.getElementById('touch-controls').style.display = 'none';
 
       const map = { ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right', timeout:'none' };
@@ -710,7 +736,8 @@ UP / DOWN / LEFT / RIGHT
         difficulty: state.currentDifficulty,
         stimulus_id: state.currentStimulus.id,
         response, correct_response: correct, accuracy, rt_ms: rt,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        device_type: isMobile ? 'mobile/tablet' : 'desktop'
       };
 
       if (state.isPractice) {
@@ -731,8 +758,14 @@ UP / DOWN / LEFT / RIGHT
       dpad.querySelectorAll('button').forEach(btn => {
         btn.addEventListener('touchstart', (e) => {
           e.preventDefault();
-          handleResponse(btn.dataset.key);
+          handleResponse({ key: btn.dataset.key });
         }, { passive: false });
+        
+        // Also handle click events for non-touch interactions on tablets
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          handleResponse({ key: btn.dataset.key });
+        });
       });
     }
 
@@ -773,7 +806,8 @@ UP / DOWN / LEFT / RIGHT
         overall_accuracy: acc,
         mean_rt: meanRt,
         completion_time: new Date().toISOString(),
-        trial: 'SUMMARY', block: 'SUMMARY', navigation_type: 'SUMMARY', difficulty: 'SUMMARY'
+        trial: 'SUMMARY', block: 'SUMMARY', navigation_type: 'SUMMARY', difficulty: 'SUMMARY',
+        device_type: isMobile ? 'mobile/tablet' : 'desktop'
       };
       await saveToGoogleSheet(summary);
 
@@ -816,18 +850,25 @@ UP / DOWN / LEFT / RIGHT
     }
 
     /********* INIT *********/
-    // Prevent page scroll on arrow keys
-    window.addEventListener('keydown', (e) => {
-      if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
-    }, { passive:false });
+    // Prevent page scroll on arrow keys (desktop only)
+    if (!isMobile) {
+      window.addEventListener('keydown', (e) => {
+        if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+      }, { passive:false });
+    }
 
-    // Enable start when form is complete (no mapping gating)
-      document.addEventListener('DOMContentLoaded', () => {
-        maybeEnableStart();
-        if (isMobile) {
-          setupTouchControls();
-        }
-      });
+    // Enable start when form is complete
+    document.addEventListener('DOMContentLoaded', () => {
+      maybeEnableStart();
+      
+      // Only set up touch controls if on mobile/tablet
+      if (isMobile) {
+        setupTouchControls();
+        console.log('Mobile/tablet device detected - D-pad controls enabled');
+      } else {
+        console.log('Desktop device detected - D-pad controls disabled');
+      }
+    });
   </script>
 </body>
 </html>
