@@ -54,41 +54,51 @@
       transition: opacity 200ms ease, transform 200ms ease, visibility 0s;
     }
 
-    /* Respect reduced motion */
-    @media (prefers-reduced-motion: reduce) {
-      .screen {
-        transition: none;
-        transform: none;
-      }
-      #stimulus-image, #fixation {
-        transition: none;
-      }
+    /* Fixed 500x500 stage, centered */
+    .stimulus-stage {
+      width: 500px;
+      height: 500px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
 
-    /* Keep your original per element styling */
+    /* Image fully fills the stage, no layout shift when hidden */
     #stimulus-image {
-      max-width: 500px;
-      max-height: 500px;
+      position: absolute;
+      inset: 0;                /* top/right/bottom/left: 0 */
+      width: 100%;
+      height: 100%;
+      object-fit: contain;     /* keep original aspect inside 500x500 */
       border: 2px solid #ddd;
-
-      /* fade in and out */
-      opacity: 0;
+      box-sizing: border-box;  /* keep border inside the 500x500 footprint */
+      opacity: 0;              /* crossfade */
       transition: opacity 150ms ease;
       will-change: opacity;
+      pointer-events: none;    /* never steals focus/clicks */
     }
     #stimulus-image.show { opacity: 1; }
 
+    /* Fixation perfectly centered in the same stage footprint */
     .fixation {
-      font-size: 48px;
-      font-weight: bold;
-      color: #333;
-
-      /* fade in and out */
-      opacity: 0;
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;              /* crossfade */
       transition: opacity 120ms ease;
       will-change: opacity;
+      pointer-events: none;
     }
     .fixation.show { opacity: 1; }
+
+    /* Respect reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      .screen { transition: none; transform: none; }
+      #stimulus-image, .fixation { transition: none; }
+    }
 
     .instruction-text {
       font-size: 18px;
@@ -227,8 +237,16 @@
 
     <!-- Stimulus Screen -->
     <div id="stimulus-screen" class="screen">
-      <img id="stimulus-image" src="" alt="Stimulus">
-      <div class="fixation" id="fixation">+</div>
+      <div class="stimulus-stage">
+        <img id="stimulus-image" src="" alt="Stimulus" />
+        <div class="fixation" id="fixation" aria-hidden="true">
+          <!-- Crisp SVG fixation cross -->
+          <svg class="fixation-svg" width="64" height="64" viewBox="0 0 64 64">
+            <line x1="32" y1="10" x2="32" y2="54" stroke="#333" stroke-width="4" stroke-linecap="round"/>
+            <line x1="10" y1="32" x2="54" y2="32" stroke="#333" stroke-width="4" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </div>
     </div>
 
     <!-- Feedback or Completion Screen -->
@@ -264,7 +282,6 @@
       });
     }
 
-    
     // Group descriptions
     const groupDescriptions = {
       'DF': 'Deaf individuals who are fluent in sign language',
@@ -328,26 +345,25 @@
     const imageCache = new Map();
 
     async function getUniqueIdFromServer(groupCode) {
-  // Use text/plain to avoid a CORS preflight. Apps Script will still parse JSON.
-  const res = await fetch(GOOGLE_SHEET_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'nextIdLocked', groupCode })
-  });
-  if (!res.ok) throw new Error('ID server responded ' + res.status);
-  const data = await res.json();
-  if (!data.ok || !data.id) throw new Error(data.error || 'Bad response');
-  return data.id; // e.g., "DF-online-007"
-}
+      // Use text/plain to avoid a CORS preflight. Apps Script will still parse JSON.
+      const res = await fetch(GOOGLE_SHEET_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'nextIdLocked', groupCode })
+      });
+      if (!res.ok) throw new Error('ID server responded ' + res.status);
+      const data = await res.json();
+      if (!data.ok || !data.id) throw new Error(data.error || 'Bad response');
+      return data.id; // e.g., "DF-online-007"
+    }
 
-function fallbackLocalId(groupCode) {
-  // Practically unique if offline - includes time and cryptographic random
-  const bytes = new Uint8Array(8);
-  crypto.getRandomValues(bytes);
-  const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 8);
-  return `${groupCode}-tmp-${Date.now().toString(36)}-${hex}`;
-}
-
+    function fallbackLocalId(groupCode) {
+      // Practically unique if offline - includes time and cryptographic random
+      const bytes = new Uint8Array(8);
+      crypto.getRandomValues(bytes);
+      const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 8);
+      return `${groupCode}-tmp-${Date.now().toString(36)}-${hex}`;
+    }
 
     async function preloadBlockImages(stimuli) {
       const promises = stimuli.map(stim => {
@@ -390,24 +406,24 @@ function fallbackLocalId(groupCode) {
     }
 
     async function updateParticipantID() {
-  const groupSelect = document.getElementById('participant-group');
-  const startButton = document.getElementById('start-button');
-  const groupDesc = document.getElementById('group-desc');
+      const groupSelect = document.getElementById('participant-group');
+      const startButton = document.getElementById('start-button');
+      const groupDesc = document.getElementById('group-desc');
 
-  if (groupSelect.value) {
-    groupDesc.textContent = groupDescriptions[groupSelect.value];
-    startButton.disabled = false;
-    startButton.textContent = 'Start Experiment';
+      if (groupSelect.value) {
+        groupDesc.textContent = groupDescriptions[groupSelect.value];
+        startButton.disabled = false;
+        startButton.textContent = 'Start Experiment';
 
-    // Ensure the old ID display stays hidden
-    const idDisplay = document.getElementById('participant-id-display');
-    if (idDisplay) idDisplay.style.display = 'none';
-  } else {
-    groupDesc.textContent = '';
-    startButton.disabled = true;
-    startButton.textContent = 'Please select your group first';
-  }
-}
+        // Ensure the old ID display stays hidden
+        const idDisplay = document.getElementById('participant-id-display');
+        if (idDisplay) idDisplay.style.display = 'none';
+      } else {
+        groupDesc.textContent = '';
+        startButton.disabled = true;
+        startButton.textContent = 'Please select your group first';
+      }
+    }
 
     function generateBlockSequence(participantId) {
       const matches = participantId.match(/\d+/);
@@ -481,21 +497,19 @@ function fallbackLocalId(groupCode) {
     }
 
     async function saveToGoogleSheet(payload) {
-  try {
-    // Always label the action explicitly
-    const body = { action: 'saveTrial', ...payload, user_agent: navigator.userAgent };
-
-    await fetch(GOOGLE_SHEET_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-  } catch (e) {
-    if (debugMode) console.warn('Save to Sheets failed, using local only');
-  }
-}
-
+      try {
+        // Always label the action explicitly
+        const body = { action: 'saveTrial', ...payload, user_agent: navigator.userAgent };
+        await fetch(GOOGLE_SHEET_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+      } catch (e) {
+        if (debugMode) console.warn('Save to Sheets failed, using local only');
+      }
+    }
 
     async function saveExperimentSummary() {
       const summary = {
@@ -516,53 +530,52 @@ function fallbackLocalId(groupCode) {
 
     // Start experiment
     async function startExperiment() {
-  const group = document.getElementById('participant-group').value;
-  const age = document.getElementById('age').value;
-  const gender = document.getElementById('gender').value;
-  const handedness = document.getElementById('handedness').value;
+      const group = document.getElementById('participant-group').value;
+      const age = document.getElementById('age').value;
+      const gender = document.getElementById('gender').value;
+      const handedness = document.getElementById('handedness').value;
 
-  if (!group) { alert('Please select your participant group first'); return; }
-  if (!age || !gender || !handedness) {
-    alert('Please fill in all required fields (Age, Gender, Handedness)');
-    return;
-  }
+      if (!group) { alert('Please select your participant group first'); return; }
+      if (!age || !gender || !handedness) {
+        alert('Please fill in all required fields (Age, Gender, Handedness)');
+        return;
+      }
 
-  // Briefly lock the button while we reserve the ID
-  const startButton = document.getElementById('start-button');
-  startButton.disabled = true;
-  startButton.textContent = 'Assigning ID...';
+      // Briefly lock the button while we reserve the ID
+      const startButton = document.getElementById('start-button');
+      startButton.disabled = true;
+      startButton.textContent = 'Assigning ID...';
 
-  let assignedId;
-  try {
-    assignedId = await getUniqueIdFromServer(group);
-  } catch (err) {
-    console.warn('ID server failed, generating offline-safe temporary ID:', err);
-    assignedId = fallbackLocalId(group);
-  }
+      let assignedId;
+      try {
+        assignedId = await getUniqueIdFromServer(group);
+      } catch (err) {
+        console.warn('ID server failed, generating offline-safe temporary ID:', err);
+        assignedId = fallbackLocalId(group);
+      }
 
-  // Store participant info (ID is not shown to the participant)
-  state.participantInfo = {
-    id: assignedId,
-    group,
-    age,
-    gender,
-    handedness,
-    timestamp: new Date().toISOString()
-  };
+      // Store participant info (ID is not shown to the participant)
+      state.participantInfo = {
+        id: assignedId,
+        group,
+        age,
+        gender,
+        handedness,
+        timestamp: new Date().toISOString()
+      };
 
-  // Generate blocks, reset trackers, and move to practice
-  config.blocks = generateBlockSequence(state.participantInfo.id);
-  state.usedStimuliTracker = {};
-  state.isPractice = true;
+      // Generate blocks, reset trackers, and move to practice
+      config.blocks = generateBlockSequence(state.participantInfo.id);
+      state.usedStimuliTracker = {};
+      state.isPractice = true;
 
-  showPracticeInstructions();
-  document.getElementById('data-entry-screen').classList.remove('active');
+      showPracticeInstructions();
+      document.getElementById('data-entry-screen').classList.remove('active');
 
-  // Restore button text for safety if they come back
-  startButton.disabled = false;
-  startButton.textContent = 'Start Experiment';
-}
-
+      // Restore button text for safety if they come back
+      startButton.disabled = false;
+      startButton.textContent = 'Start Experiment';
+    }
 
     // Practice instructions
     function showPracticeInstructions() {
@@ -654,7 +667,6 @@ function fallbackLocalId(groupCode) {
 
     // Present stimulus with crossfade from fixation
     async function presentStimulus(stimulus, navType, difficulty) {
-      const stimulusScreen = document.getElementById('stimulus-screen');
       const stimulusImage = document.getElementById('stimulus-image');
       const fixation = document.getElementById('fixation');
 
@@ -748,7 +760,6 @@ function fallbackLocalId(groupCode) {
       await sleep(120);
 
       if (state.isPractice) {
-        const feedbackScreen = document.getElementById('feedback-screen');
         const feedbackText = document.getElementById('feedback-text');
         feedbackText.textContent = accuracy ? 'Correct!' : 'Incorrect';
         feedbackText.style.color = accuracy ? 'green' : 'red';
