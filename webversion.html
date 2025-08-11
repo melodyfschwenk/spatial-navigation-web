@@ -161,8 +161,7 @@
       HNS: 'Hearing individuals who do not know sign language'
     };
 
-    // Mirror the PsychoPy idea: 2 nav types × 2 difficulties, each repeated,
-    // plus 1 control block inserted mid-run → 9 total blocks.
+    // 2 nav types × 2 difficulties × 2 reps + 1 control block inserted mid-run → 9 total blocks.
     const config = {
       trialsPerBlock: 15,
       maxResponseTime: 3000,   // ms
@@ -170,8 +169,6 @@
       itiDuration: 400,        // ms (main task only)
       practiceTrials: 4,       // 2 ego + 2 allo
       repetitions: 2,          // each (ego/allo)×(easy/hard) twice
-      navigationTypes: ['egocentric', 'allocentric'],
-      difficultyLevels: ['easy', 'hard'],
       blocks: []
     };
 
@@ -192,6 +189,37 @@
       blockData: []
     };
 
+    // Participant-friendly instructions
+    const INSTRUCTIONS = {
+      brief: {
+        egocentric: `
+PLAYER VIEW:
+UP = forward (direction you're facing)
+DOWN = backward
+LEFT = to your left
+RIGHT = to your right
+        `,
+        allocentric: `
+MAP VIEW:
+UP = toward the top of the screen
+DOWN = toward the bottom of the screen
+LEFT = toward the left side of the screen
+RIGHT = toward the right of the screen
+        `,
+        control: `
+ARROW FOLLOWING:
+Press the arrow matching the FIRST arrow from the player.
+UP / DOWN / LEFT / RIGHT
+        `
+      }
+    };
+
+    function prettyHeader(navType) {
+      return navType === 'egocentric' ? 'PLAYER VIEW'
+           : navType === 'allocentric' ? 'MAP VIEW'
+           : 'ARROW FOLLOWING';
+    }
+
     /********* UTILS *********/
     function showScreen(id) {
       ['data-entry-screen','instruction-screen','stimulus-screen','feedback-screen'].forEach(s => {
@@ -202,6 +230,10 @@
     function setInstructionContinue(handler) {
       const btn = document.getElementById('instruction-continue');
       btn.onclick = handler;
+      btn.style.display = 'inline-block';
+    }
+    function hideInstructionContinue() {
+      document.getElementById('instruction-continue').style.display = 'none';
     }
     function debugLog(msg) {
       if (!debugMode) return;
@@ -242,15 +274,14 @@
       return new RNG(base*1000 + jitter);
     }
 
-    // Counterbalance like your PsychoPy: use digits in participant id → 1..4
+    // Counterbalance from participant id → 1..4
     function determineCounterbalance(participantId){
       const m = String(participantId).match(/\d+/);
       const n = m ? parseInt(m[0],10) : [...String(participantId)].reduce((a,c)=>a+c.charCodeAt(0),0);
       return (n % 4) + 1;
     }
 
-    // Build block list: Latin-square over [(ego, easy), (ego, hard), (allo, easy), (allo, hard)]
-    // then duplicate for repetitions, and insert one control block in the middle.
+    // Latin-square over [(ego, easy), (ego, hard), (allo, easy), (allo, hard)] ×2; insert one control in the middle.
     function createBlockSequence(counterbalance){
       const latin = [
         [['egocentric','easy'], ['egocentric','hard'], ['allocentric','easy'], ['allocentric','hard']],
@@ -263,8 +294,7 @@
       for (let r=0; r<config.repetitions; r++){
         base.forEach(([n,d]) => seq.push({navType:n, difficulty:d}));
       }
-      // Insert one control block (difficulty 'control', navType 'control' to match your web mapping)
-      seq.splice(4, 0, {navType:'control', difficulty:'control'});
+      seq.splice(4, 0, {navType:'control', difficulty:'control'}); // insert control once
       debugLog('Block sequence: ' + seq.map(b=>b.navType+'/'+b.difficulty).join(' | '));
       return seq;
     }
@@ -273,9 +303,8 @@
       if (stimuli.length === 0) return [];
       let pool = [...stimuli];
       if (pool.length < need) {
-        // repeat then trim
         const reps = Math.ceil(need / pool.length);
-        pool = Array.from({length: reps}, (_,i)=>rng.shuffle(stimuli)).flat();
+        pool = Array.from({length: reps}, ()=>rng.shuffle(stimuli)).flat();
       }
       pool = rng.shuffle(pool);
       return pool.slice(0, need);
@@ -290,7 +319,6 @@
       const key = navType + '_' + difficulty;
       if (!state.usedStimuliTracker[key]) state.usedStimuliTracker[key] = new Set();
 
-      // Prefer unused; if not enough, mix back in used.
       const unused = bucket.filter(s => !state.usedStimuliTracker[key].has(s.id));
       const used   = bucket.filter(s =>  state.usedStimuliTracker[key].has(s.id));
       let pool = [...unused, ...used];
@@ -365,16 +393,24 @@
       config.blocks = createBlockSequence(cb);
       state.usedStimuliTracker = {};
 
-      // Show practice instructions; one Continue to start practice
+      // Clear practice counters
+      state.isPractice = true;
+      state.currentTrial = 0;
+
+      // Practice overview — explicitly mentions the two question types
       const txt = document.getElementById('instruction-text');
       const head = document.getElementById('nav-type-indicator'); head.className=''; head.textContent='';
       txt.innerHTML = `
-        <h3>Practice Phase</h3>
-        <p>You will practice the two navigation types.</p>
-        <p><strong>PLAYER VIEW</strong>: act as if you are the player (UP=forward, DOWN=backward, LEFT/RIGHT=turn)</p>
-        <p><strong>MAP VIEW</strong>: use map directions (UP=north, DOWN=south, LEFT=west, RIGHT=east)</p>
-        <p>Press Continue when ready to begin practice.</p>`;
-      setInstructionContinue(()=> { state.isPractice = true; state.currentTrial = 0; runPracticeTrial(); });
+        <h3>Practice Phase (2 short parts)</h3>
+        <p>You will answer <strong>two kinds of practice questions</strong>:</p>
+        <p><strong>1) PLAYER VIEW</strong> — act as if you are the player:<br>
+        UP = forward, DOWN = backward, LEFT/RIGHT = turn</p>
+        <p><strong>2) MAP VIEW</strong> — use screen directions like a map:<br>
+        UP = top of the screen, DOWN = bottom, LEFT = left, RIGHT = right</p>
+        <p>You will do <strong>2 questions of each type</strong>. Between them, you’ll see a brief reminder of the next type.<br>
+        You’ll get quick “Correct/Incorrect” feedback in practice.</p>
+        <p>Press <strong>Continue</strong> to begin practice.</p>`;
+      setInstructionContinue(()=> { runPracticeTrial(/*showBannerIfNeeded=*/true); });
       showScreen('instruction-screen');
 
       // re-enable start for safety if user returns
@@ -382,10 +418,29 @@
     }
 
     /********* PRACTICE FLOW *********/
-    function runPracticeTrial(){
+    // Show a brief auto-advancing banner when switching practice types (no extra button)
+    async function showPracticeTypeBanner(navType, thenStartFn){
+      const head = document.getElementById('nav-type-indicator');
+      const txt = document.getElementById('instruction-text');
+      head.className = `nav-type-header ${navType}-header`;
+      head.textContent = prettyHeader(navType);
+
+      txt.innerHTML = `
+        <pre style="text-align:left; white-space:pre-wrap; line-height:1.4; font-family:inherit;">
+${INSTRUCTIONS.brief[navType].trim()}
+        </pre>
+        <p>Next: <strong>${prettyHeader(navType)}</strong> practice — 2 quick questions. Starting...</p>`;
+      hideInstructionContinue();
+      showScreen('instruction-screen');
+      await sleep(900); // brief pause to orient
+      thenStartFn();
+    }
+
+    function runPracticeTrial(showBannerIfNeeded=false){
       if (!state.isPractice) return; // safety
+
       if (state.currentTrial >= config.practiceTrials) {
-        // Practice → one break screen before main task
+        // Practice → break screen before main task
         state.isPractice = false;
         state.currentBlock = 0; state.currentTrial = 0;
 
@@ -400,8 +455,19 @@
         return;
       }
 
+      // Determine current practice type (first 2 = ego, next 2 = allo)
       const navType = state.currentTrial < 2 ? 'egocentric' : 'allocentric';
       const stim = stimulusMapping.easy[state.currentTrial % stimulusMapping.easy.length];
+
+      // If we just switched types (trial 2), show a brief banner without adding a button
+      if (showBannerIfNeeded || state.currentTrial === 2) {
+        const needBanner = (state.currentTrial === 0) || (state.currentTrial === 2);
+        if (needBanner) {
+          showPracticeTypeBanner(navType, () => presentStimulus(stim, navType, 'practice'));
+          return;
+        }
+      }
+
       presentStimulus(stim, navType, 'practice');
       updateProgress();
     }
@@ -412,18 +478,17 @@
       const head = document.getElementById('nav-type-indicator');
       const txt = document.getElementById('instruction-text');
 
-      const name = block.navType === 'egocentric' ? 'PLAYER VIEW'
-                 : block.navType === 'allocentric' ? 'MAP VIEW' : 'ARROW FOLLOWING';
+      const name = prettyHeader(block.navType);
       head.className = `nav-type-header ${block.navType}-header`;
       head.textContent = name;
 
       const msg = {
         egocentric: `Navigate from the gray player to the red stop sign.<br><br>
                      Use arrow keys as if YOU are the player:<br>
-                     UP=forward, DOWN=backward, LEFT=turn left, RIGHT=turn right`,
+                     UP = forward, DOWN = backward, LEFT = turn left, RIGHT = turn right`,
         allocentric:`Navigate from the gray player to the red stop sign.<br><br>
                      Use arrow keys as map directions:<br>
-                     UP=north (top), DOWN=south (bottom), LEFT=west, RIGHT=east`,
+                     UP = north (top), DOWN = south (bottom), LEFT = west, RIGHT = east`,
         control:    `Follow the arrows shown.<br><br>
                      Press the arrow key matching the FIRST arrow from the player.`
       };
@@ -449,6 +514,7 @@
       if (state.currentTrial >= config.trialsPerBlock) {
         // end of block
         state.allData.push(...state.blockData);
+        state.blockData = [];
         state.currentBlock++;
         if (state.currentBlock >= config.blocks.length) {
           showCompletion();
@@ -468,7 +534,7 @@
 
       presentStimulus(stim, block.navType, block.difficulty);
       updateProgress();
-      // CRITICAL: we do NOT increment here; we increment after logging the response
+      // increment happens after logging the response
     }
 
     /********* PRESENT & RESPOND *********/
@@ -529,7 +595,7 @@
         correct = state.currentStimulus.egocentric_correct;
       else if (state.currentNavType === 'allocentric')
         correct = state.currentStimulus.allocentric_correct;
-      else // 'control' block: mapping file should still carry *_correct; use egocentric field by convention
+      else // control block: use whichever mapping is present (prefer ego)
         correct = state.currentStimulus.egocentric_correct ?? state.currentStimulus.allocentric_correct;
 
       const accuracy = response === correct ? 1 : 0;
@@ -555,6 +621,7 @@
         // Main task: add to block data
         const trialNum = state.currentTrial + 1;
         state.blockData.push({ ...common, block: state.currentBlock + 1, trial: trialNum });
+        state.allData.push({ ...common, block: state.currentBlock + 1, trial: trialNum }); // also store to allData live
         saveToGoogleSheet({ ...common, block: state.currentBlock + 1, trial: trialNum });
 
         // advance trial counter only AFTER logging
@@ -573,7 +640,12 @@
       setTimeout(()=> {
         showScreen('stimulus-screen');
         state.currentTrial += 1;
-        runPracticeTrial();
+        // For trial 2 (switch to MAP VIEW), show a quick banner before the next trial
+        if (state.currentTrial === 2) {
+          runPracticeTrial(true);
+        } else {
+          runPracticeTrial(false);
+        }
       }, 900);
     }
 
