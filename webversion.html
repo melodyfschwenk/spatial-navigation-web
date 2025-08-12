@@ -437,7 +437,6 @@ UP / DOWN / LEFT / RIGHT
       } catch(e){ /* silent */ }
     }
 
-    notifyParentIfEmbedded({ completed: true });
     /********* FORM *********/
     function onGroupChange(){
       const group = document.getElementById('participant-group').value;
@@ -832,10 +831,11 @@ UP / DOWN / LEFT / RIGHT
         trial: 'SUMMARY', block: 'SUMMARY', navigation_type: 'SUMMARY', difficulty: 'SUMMARY',
         device_type: isMobile ? 'mobile/tablet' : 'desktop'
       };
-      await saveToGoogleSheet(summary);
+        await saveToGoogleSheet(summary);
+        notifyParentIfEmbedded({ completed: true });
 
-      const txt = document.getElementById('feedback-text');
-      const dl  = document.getElementById('download-data');
+        const txt = document.getElementById('feedback-text');
+        const dl  = document.getElementById('download-data');
       txt.innerHTML = `
         <h2>Experiment Complete!</h2>
         <p>Thank you for participating.</p>
@@ -883,7 +883,8 @@ UP / DOWN / LEFT / RIGHT
     // Enable start when form is complete
     document.addEventListener('DOMContentLoaded', () => {
       maybeEnableStart();
-      
+      notifyParentIfEmbedded({ ready: true });
+
       // Only set up touch controls if on mobile/tablet
       if (isMobile) {
         setupTouchControls();
