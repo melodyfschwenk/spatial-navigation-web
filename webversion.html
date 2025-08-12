@@ -175,7 +175,7 @@
     </div>
 
     <!-- Touch controls - Only visible on mobile/tablet devices -->
-    <div id="touch-controls" class="dpad">
+    <div id="touch-controls" class="dpad right-handed">
       <button class="dpad-button up" data-key="ArrowUp">&#9650;</button>
       <button class="dpad-button left" data-key="ArrowLeft">&#9664;</button>
       <button class="dpad-button down" data-key="ArrowDown">&#9660;</button>
@@ -243,21 +243,6 @@
       blockData: []
     };
 
-  // Helper to notify parent window if embedded
-function notifyParentIfEmbedded(message) {
-  if (window !== window.top) {
-    // We're in an iframe
-    try {
-      window.parent.postMessage({
-        type: 'task-complete',
-        taskCode: 'SN',
-        ...message
-      }, '*');
-    } catch(e) {
-      console.log('Could not communicate with parent:', e);
-    }
-  }
-}
     /********* INSTRUCTIONS *********/
     const INSTRUCTIONS = {
       full: {
@@ -485,18 +470,11 @@ UP / DOWN / LEFT / RIGHT
 
       state.participantInfo = { id: assignedId, group, age, gender, handedness, timestamp: new Date().toISOString() };
 
-
       // Position on-screen dpad based on handedness (only if mobile)
       if (isMobile) {
         const dpad = document.getElementById('touch-controls');
-        // Remove both classes first
-        dpad.classList.remove('left-handed', 'right-handed');
-        // Then add the appropriate one
-        if (handedness === 'left') {
-          dpad.classList.add('left-handed');
-        } else {
-          dpad.classList.add('right-handed');
-        }
+        dpad.classList.toggle('left-handed', handedness === 'left');
+        dpad.classList.toggle('right-handed', handedness !== 'left');
       }
 
       const cb = determineCounterbalance(assignedId);
@@ -831,11 +809,10 @@ UP / DOWN / LEFT / RIGHT
         trial: 'SUMMARY', block: 'SUMMARY', navigation_type: 'SUMMARY', difficulty: 'SUMMARY',
         device_type: isMobile ? 'mobile/tablet' : 'desktop'
       };
-        await saveToGoogleSheet(summary);
-        notifyParentIfEmbedded({ completed: true });
+      await saveToGoogleSheet(summary);
 
-        const txt = document.getElementById('feedback-text');
-        const dl  = document.getElementById('download-data');
+      const txt = document.getElementById('feedback-text');
+      const dl  = document.getElementById('download-data');
       txt.innerHTML = `
         <h2>Experiment Complete!</h2>
         <p>Thank you for participating.</p>
@@ -883,8 +860,7 @@ UP / DOWN / LEFT / RIGHT
     // Enable start when form is complete
     document.addEventListener('DOMContentLoaded', () => {
       maybeEnableStart();
-      notifyParentIfEmbedded({ ready: true });
-
+      
       // Only set up touch controls if on mobile/tablet
       if (isMobile) {
         setupTouchControls();
@@ -896,6 +872,3 @@ UP / DOWN / LEFT / RIGHT
   </script>
 </body>
 </html>
-
-
-
