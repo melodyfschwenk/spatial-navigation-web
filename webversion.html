@@ -812,20 +812,16 @@ UP / DOWN / LEFT / RIGHT
       await saveToGoogleSheet(summary);
 
       const txt = document.getElementById('feedback-text');
-      const dl  = document.getElementById('download-data');
-      txt.innerHTML = `
-        <h2>Experiment Complete!</h2>
-        <p>Thank you for participating.</p>
-        <p>Your data has been saved.</p>
-        <p>Overall accuracy: ${acc}%</p>
-        <p>Participant ID: ${state.participantInfo.id}</p>
-        <hr style="margin: 20px 0;">
-        <p class="hint">Optional: Download a backup copy of your data below</p>`;
-      txt.style.color = '#333';
-      dl.style.display = 'inline-block';
-      showScreen('feedback-screen');
-    }
-
+const dl  = document.getElementById('download-data');
+txt.innerHTML = `
+  <h2>Experiment Complete!</h2>
+  <p>Thank you for participating.</p>
+  <p>Your data has been saved.</p>
+  <p>Participant ID: ${state.participantInfo.id}</p>`;  // ← Added closing backtick
+txt.style.color = '#333';
+dl.style.display = 'none';  // ← Fixed quotes
+showScreen('feedback-screen');
+      
     function downloadData(){
       if (!state.allData.length) return alert('No data to download');
       const headers = Object.keys(state.allData[0]);
@@ -872,3 +868,4 @@ UP / DOWN / LEFT / RIGHT
   </script>
 </body>
 </html>
+
