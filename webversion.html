@@ -790,60 +790,88 @@ UP / DOWN / LEFT / RIGHT
 
     /********* FINISH *********/
     async function showCompletion(){
-      const totalCorrect = state.allData.filter(d=>d.accuracy===1).length;
-      const acc = state.allData.length ? (totalCorrect / state.allData.length * 100).toFixed(1) : '—';
-      const meanRt = (state.allData.reduce((s,d)=> s + (d.rt_ms || 0), 0) /
-                     Math.max(1, state.allData.filter(d=>d.rt_ms!=null).length)).toFixed(0);
+  const totalCorrect = state.allData.filter(d=>d.accuracy===1).length;
+  const acc = state.allData.length ? (totalCorrect / state.allData.length * 100).toFixed(1) : '—';
+  const meanRt = (
+    state.allData.reduce((s,d)=> s + (d.rt_ms || 0), 0) /
+    Math.max(1, state.allData.filter(d=>d.rt_ms!=null).length)
+  ).toFixed(0);
 
-      const summary = {
-        participant_id: state.participantInfo.id,
-        participant_group: state.participantInfo.group,
-        age: state.participantInfo.age,
-        gender: state.participantInfo.gender,
-        handedness: state.participantInfo.handedness,
-        total_trials: state.allData.length,
-        total_correct: totalCorrect,
-        overall_accuracy: acc,
-        mean_rt: meanRt,
-        completion_time: new Date().toISOString(),
-        trial: 'SUMMARY', block: 'SUMMARY', navigation_type: 'SUMMARY', difficulty: 'SUMMARY',
-        device_type: isMobile ? 'mobile/tablet' : 'desktop'
-      };
-      await saveToGoogleSheet(summary);
+  const summary = {
+    participant_id: state.participantInfo.id,
+    participant_group: state.participantInfo.group,
+    age: state.participantInfo.age,
+    gender: state.participantInfo.gender,
+    handedness: state.participantInfo.handedness,
+    total_trials: state.allData.length,
+    total_correct: totalCorrect,
+    overall_accuracy: acc,
+    mean_rt: meanRt,
+    completion_time: new Date().toISOString(),
+    trial: 'SUMMARY', block: 'SUMMARY', navigation_type: 'SUMMARY', difficulty: 'SUMMARY',
+    device_type: isMobile ? 'mobile/tablet' : 'desktop'
+  };
+  await saveToGoogleSheet(summary);
 
-      const txt = document.getElementById('feedback-text');
-const dl  = document.getElementById('download-data');
-txt.innerHTML = `
-  <h2>Experiment Complete!</h2>
-  <p>Thank you for participating.</p>
-  <p>Your data has been saved.</p>
-  <p>Participant ID: ${state.participantInfo.id}</p>`;  // ← Added closing backtick
-txt.style.color = '#333';
-dl.style.display = 'none';  // ← Fixed quotes
-showScreen('feedback-screen');
-      
-    function downloadData(){
-      if (!state.allData.length) return alert('No data to download');
-      const headers = Object.keys(state.allData[0]);
-      const csv = [
-        headers.join(','),
-        ...state.allData.map(r =>
-          headers.map(h => {
-            const v = r[h];
-            if (typeof v === 'string' && v.includes(',')) return `"${v.replace(/"/g,'""')}"`;
-            return v ?? '';
-          }).join(',')
-        )
-      ].join('\n');
+  const txt = document.getElementById('feedback-text');
+  const dl  = document.getElementById('download-data');
+  txt.innerHTML = `
+    <h2>Experiment Complete!</h2>
+    <p>Thank you for participating.</p>
+    <p>Your data has been saved.</p>
+    <p>Participant ID: ${state.participantInfo.id}</p>`;
+  txt.style.color = '#333';
+  dl.style.display = 'none';
+  showScreen('feedback-screen');
+}  // <-- close showCompletion properly
 
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `spatial_nav_${state.participantInfo.id}_${Date.now()}.csv`;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
+function downloadData(){
+  if (!state.allData.length) return alert('No data to download');
+  const headers = Object.keys(state.allData[0]);
+  const csv = [
+    headers.join(','),
+    ...state.allData.map(r =>
+      headers.map(h => {
+        const v = r[h];
+        if (typeof v === 'string' && v.includes(',')) return `"${v.replace(/"/g,'""')}"`;
+        return v ?? '';
+      }).join(',')
+    )
+  ].join('\n');
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `spatial_nav_${state.participantInfo.id}_${Date.now()}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/********* INIT *********/
+// Prevent page scroll on arrow keys (desktop only)
+if (!isMobile) {
+  window.addEventListener('keydown', (e) => {
+    if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+  }, { passive:false });
+}
+
+// Enable start when form is complete and set up touch controls
+document.addEventListener('DOMContentLoaded', () => {
+  maybeEnableStart();
+
+  // friendlier copy on the button so people know all fields are required
+  const startBtn = document.getElementById('start-button');
+  startBtn.textContent = 'Fill in all fields to start';
+
+  if (isMobile) {
+    setupTouchControls();
+    console.log('Mobile/tablet device detected - D-pad controls enabled');
+  } else {
+    console.log('Desktop device detected - D-pad controls disabled');
+  }
+});
+</script>
 
     /********* INIT *********/
     // Prevent page scroll on arrow keys (desktop only)
@@ -868,4 +896,5 @@ showScreen('feedback-screen');
   </script>
 </body>
 </html>
+
 
