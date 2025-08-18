@@ -873,28 +873,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
-    /********* INIT *********/
-    // Prevent page scroll on arrow keys (desktop only)
-    if (!isMobile) {
-      window.addEventListener('keydown', (e) => {
-        if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
-      }, { passive:false });
-    }
 
-    // Enable start when form is complete
-    document.addEventListener('DOMContentLoaded', () => {
-      maybeEnableStart();
-      
-      // Only set up touch controls if on mobile/tablet
-      if (isMobile) {
-        setupTouchControls();
-        console.log('Mobile/tablet device detected - D-pad controls enabled');
-      } else {
-        console.log('Desktop device detected - D-pad controls disabled');
-      }
-    });
-  </script>
 </body>
 </html>
+
 
 
