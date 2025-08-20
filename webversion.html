@@ -446,6 +446,8 @@ UP / DOWN / LEFT / RIGHT
       const age = document.getElementById('age').value;
       const gender = document.getElementById('gender').value;
       const handedness = document.getElementById('handedness').value;
+      const initials = localStorage.getItem('participantInitials') || '';
+      localStorage.removeItem('participantInitials');
       if (!group || !age || !gender || !handedness) return alert('Please fill in all required fields (Age, Gender, Handedness)');
 
       const btn = document.getElementById('start-button');
@@ -468,7 +470,7 @@ UP / DOWN / LEFT / RIGHT
         assignedId = `${group}-tmp-${Date.now().toString(36)}-${hex}`;
       }
 
-      state.participantInfo = { id: assignedId, group, age, gender, handedness, timestamp: new Date().toISOString() };
+      state.participantInfo = { id: assignedId, initials, group, age, gender, handedness, timestamp: new Date().toISOString() };
 
       // Position on-screen dpad based on handedness (only if mobile)
       if (isMobile) {
@@ -728,6 +730,7 @@ UP / DOWN / LEFT / RIGHT
 
       const common = {
         participant_id: state.participantInfo.id,
+        participant_initials: state.participantInfo.initials,
         participant_group: state.participantInfo.group,
         age: state.participantInfo.age,
         gender: state.participantInfo.gender,
@@ -799,6 +802,7 @@ UP / DOWN / LEFT / RIGHT
 
   const summary = {
     participant_id: state.participantInfo.id,
+    participant_initials: state.participantInfo.initials,
     participant_group: state.participantInfo.group,
     age: state.participantInfo.age,
     gender: state.participantInfo.gender,

@@ -63,10 +63,22 @@
             margin: 30px 0;
             transition: all 0.3s ease;
             box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            border: none;
+            cursor: pointer;
         }
         .start-button:hover {
             transform: translateY(-2px);
             box-shadow: 0 7px 20px rgba(102, 126, 234, 0.5);
+        }
+        .initials-input {
+            margin: 20px 0;
+        }
+        .initials-input input {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 200px;
         }
         .info-box {
             background: #f8f9fa;
@@ -151,7 +163,12 @@
             </ul>
         </div>
         
-        <a href="webversion.html" class="start-button">Begin Experiment</a>
+        <div class="initials-input">
+            <label for="initials"><strong>Your initials:</strong></label><br>
+            <input type="text" id="initials" maxlength="3" placeholder="e.g., ABC" style="text-transform: uppercase;">
+        </div>
+
+        <button class="start-button" onclick="startExperiment()">Begin Experiment</button>
         
         <div class="info-box">
             <h3>What You'll Do</h3>
@@ -171,5 +188,16 @@
             </p>
         </div>
     </div>
+    <script>
+        function startExperiment(){
+            const initials = document.getElementById('initials').value.trim();
+            if(!initials){
+                alert('Please enter your initials.');
+                return;
+            }
+            localStorage.setItem('participantInitials', initials);
+            window.location.href = 'webversion.html';
+        }
+    </script>
 </body>
 </html>
