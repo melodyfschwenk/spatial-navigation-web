@@ -228,6 +228,7 @@
 
     const state = {
       participantInfo: {},
+      taskData: {},
       isPractice: false,
       currentBlock: 0,
       currentTrial: 0,
@@ -414,12 +415,47 @@ UP / DOWN / LEFT / RIGHT
         const img = new Image(); img.onload = res; img.onerror = res; img.src = s.file;
       })));
     }
-    async function saveToGoogleSheet(payload){
+
+    async function sendToSheets(payload){
       try {
-        const body = { action: 'saveTrial', ...payload, user_agent: navigator.userAgent };
-        await fetch(GOOGLE_SHEET_URL, { method:'POST', mode:'no-cors',
-          headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        await fetch(GOOGLE_SHEET_URL, {
+          method:'POST',
+          mode:'no-cors',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ ...payload, user_agent: navigator.userAgent })
+        });
       } catch(e){ /* silent */ }
+    }
+
+    async function saveToGoogleSheet(payload){
+      await sendToSheets({ action: 'saveTrial', ...payload });
+    }
+
+    function startTask(taskCode) {
+      if (!taskCode) return;
+      if (!state.taskData) state.taskData = {};
+      state.taskData[taskCode] = { startTime: Date.now() };
+      sendToSheets({
+        action: 'task_started',
+        sessionCode: state.sessionCode,
+        participantID: state.participantInfo.id,
+        task: taskCode,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    function completeTask(taskCode) {
+      if (!taskCode) return;
+      const startTime = state.taskData && state.taskData[taskCode]?.startTime || Date.now();
+      const timeSpent = Date.now() - startTime;
+      sendToSheets({
+        action: 'task_completed',
+        sessionCode: state.sessionCode,
+        participantID: state.participantInfo.id,
+        task: taskCode,
+        duration: Math.round(timeSpent/1000),
+        timestamp: new Date().toISOString()
+      });
     }
 
     /********* FORM *********/
@@ -471,6 +507,8 @@ UP / DOWN / LEFT / RIGHT
       }
 
       state.participantInfo = { id: assignedId, initials, group, age, gender, handedness, timestamp: new Date().toISOString() };
+      state.sessionCode = assignedId;
+      startTask('spatial_navigation');
 
       // Position on-screen dpad based on handedness (only if mobile)
       if (isMobile) {
@@ -816,6 +854,7 @@ UP / DOWN / LEFT / RIGHT
     device_type: isMobile ? 'mobile/tablet' : 'desktop'
   };
   await saveToGoogleSheet(summary);
+  completeTask('spatial_navigation');
 
   const txt = document.getElementById('feedback-text');
   const dl  = document.getElementById('download-data');
