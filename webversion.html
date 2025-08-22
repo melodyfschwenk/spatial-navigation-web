@@ -119,6 +119,11 @@
       <div id="group-desc" class="hint"></div>
 
       <div class="form-group">
+        <label>Initials:</label>
+        <input type="text" id="initials" maxlength="3" oninput="maybeEnableStart()" style="text-transform: uppercase;">
+      </div>
+
+      <div class="form-group">
         <label>Age:</label>
         <input type="number" id="age" min="18" max="100" oninput="maybeEnableStart()">
       </div>
@@ -467,24 +472,24 @@ UP / DOWN / LEFT / RIGHT
     }
     function maybeEnableStart(){
       const group = document.getElementById('participant-group').value;
+      const initials = document.getElementById('initials').value.trim();
       const age = document.getElementById('age').value;
       const gender = document.getElementById('gender').value;
       const handedness = document.getElementById('handedness').value;
       const startBtn = document.getElementById('start-button');
-      const ready = group && age && gender && handedness;
+      const ready = group && initials && age && gender && handedness;
       startBtn.disabled = !ready;
-      startBtn.textContent = ready ? 'Start Experiment' : 'Please select your group first';
+      startBtn.textContent = ready ? 'Start Experiment' : 'Fill in all fields to start';
     }
 
     /********* START *********/
     async function startExperiment(){
       const group = document.getElementById('participant-group').value;
+      const initials = document.getElementById('initials').value.trim().toUpperCase();
       const age = document.getElementById('age').value;
       const gender = document.getElementById('gender').value;
       const handedness = document.getElementById('handedness').value;
-      const initials = localStorage.getItem('participantInitials') || '';
-      localStorage.removeItem('participantInitials');
-      if (!group || !age || !gender || !handedness) return alert('Please fill in all required fields (Age, Gender, Handedness)');
+      if (!group || !initials || !age || !gender || !handedness) return alert('Please fill in all required fields (Initials, Age, Gender, Handedness)');
 
       const btn = document.getElementById('start-button');
       btn.disabled = true; btn.textContent = 'Assigning ID…';
