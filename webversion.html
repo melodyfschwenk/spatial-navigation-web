@@ -459,7 +459,7 @@ UP / DOWN / LEFT / RIGHT
         const res = await fetch(GOOGLE_SHEET_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'nextIdLocked', groupCode: group })
+          body: JSON.stringify({ action: 'nextIdLocked', groupCode: group, initials: initials })
         });
         const data = await res.json();
         if (!data.ok || !data.id) throw new Error('Bad response');
