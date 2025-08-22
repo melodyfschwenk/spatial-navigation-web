@@ -33,10 +33,12 @@ function getSheet_() {
 
 function appendTrialRow_(data) {
   const sheet = getSheet_();
+  ensureInitialsColumn_(sheet);
   const ts = new Date().toISOString();
   sheet.appendRow([
     ts,
     data.participant_id || '',
+    data.participant_initials || '',
     data.participant_group || '',
     data.age || '',
     data.gender || '',
@@ -52,6 +54,15 @@ function appendTrialRow_(data) {
     data.rt_ms,
     data.user_agent || ''
   ]);
+}
+
+// Ensure the sheet has a column for participant initials without overwriting existing data
+function ensureInitialsColumn_(sheet) {
+  const firstRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  if (firstRow.indexOf('participant_initials') === -1) {
+    sheet.insertColumnAfter(2);
+    sheet.getRange(1, 3).setValue('participant_initials');
+  }
 }
 
 /** ID counter with locking **/
