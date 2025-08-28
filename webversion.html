@@ -106,7 +106,7 @@
       <h2>Spatial Navigation Task</h2>
 
       <div class="form-group">
-        <label>Participant Group:</label>
+        <label for="participant-group">Participant Group:</label>
         <select id="participant-group" onchange="onGroupChange()">
           <option value="">Select your group...</option>
           <option value="DF">Deaf Fluent Signer</option>
@@ -119,16 +119,16 @@
       <div id="group-desc" class="hint"></div>
 
       <div class="form-group">
-        <label>Initials:</label>
+        <label for="initials">Initials:</label>
         <input type="text" id="initials" maxlength="3" oninput="maybeEnableStart()" style="text-transform: uppercase;">
       </div>
 
       <div class="form-group">
-        <label>Age:</label>
+        <label for="age">Age:</label>
         <input type="number" id="age" min="18" max="100" oninput="maybeEnableStart()">
       </div>
       <div class="form-group">
-        <label>Gender:</label>
+        <label for="gender">Gender:</label>
         <select id="gender" onchange="maybeEnableStart()">
           <option value="">Select...</option>
           <option value="male">Male</option>
@@ -138,7 +138,7 @@
         </select>
       </div>
       <div class="form-group">
-        <label>Handedness:</label>
+        <label for="handedness">Handedness:</label>
         <select id="handedness" onchange="maybeEnableStart()">
           <option value="">Select...</option>
           <option value="right">Right</option>
