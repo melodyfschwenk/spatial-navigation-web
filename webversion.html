@@ -50,6 +50,14 @@
     .button:disabled { background: #bbb; cursor: not-allowed; }
 
     .progress { position: absolute; top: 10px; right: 10px; font-size: 14px; color: #666; }
+    #loading-msg {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 24px;
+      font-weight: bold;
+      display: none;
+    }
 
     .nav-type-header {
       display: inline-block; padding: 8px 16px; border-radius: 6px; color: #fff; font-weight: bold; margin: 10px 0 16px;
@@ -99,6 +107,7 @@
 </head>
 <body>
   <div id="experiment-container">
+    <div id="loading-msg">Loading…</div>
     <div class="progress" id="progress" aria-live="polite"></div>
 
     <!-- Data Entry -->
@@ -189,6 +198,8 @@
   </div>
 
   <script>
+    const loadingMsgEl = document.getElementById('loading-msg');
+    loadingMsgEl.style.display = 'block';
     /********* CONFIG *********/
     const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbzw_gLBsA5hY1dU7xZ1Fp67FptHEC9veo95vyId0bBOfu_QLMNFm02Rg0iRzURzx2Cn/exec';
 
@@ -918,6 +929,7 @@ document.addEventListener('DOMContentLoaded', () => {
   } else {
     console.log('Desktop device detected - D-pad controls disabled');
   }
+  loadingMsgEl.style.display = 'none';
 });
 </script>
 
