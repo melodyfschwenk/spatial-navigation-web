@@ -99,7 +99,7 @@
 </head>
 <body>
   <div id="experiment-container">
-    <div class="progress" id="progress"></div>
+    <div class="progress" id="progress" aria-live="polite"></div>
 
     <!-- Data Entry -->
     <div id="data-entry-screen" class="screen active">
@@ -175,7 +175,7 @@
 
     <!-- Feedback / Completion -->
     <div id="feedback-screen" class="screen">
-      <div id="feedback-text" style="font-size:24px; margin: 20px;"></div>
+      <div id="feedback-text" style="font-size:24px; margin: 20px;" aria-live="polite"></div>
       <button class="button" id="download-data" onclick="downloadData()" style="display:none;">Download Data</button>
     </div>
 
