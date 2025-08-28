@@ -102,55 +102,57 @@
     <div class="progress" id="progress"></div>
 
     <!-- Data Entry -->
-    <div id="data-entry-screen" class="screen active">
-      <h2>Spatial Navigation Task</h2>
+      <div id="data-entry-screen" class="screen active">
+        <h2>Spatial Navigation Task</h2>
 
-      <div class="form-group">
-        <label>Participant Group:</label>
-        <select id="participant-group" onchange="onGroupChange()">
-          <option value="">Select your group...</option>
-          <option value="DF">Deaf Fluent Signer</option>
-          <option value="HF">Hearing Fluent Signer</option>
-          <option value="DNF">Deaf Non-Fluent Signer</option>
-          <option value="HNF">Hearing Non-Fluent Signer</option>
-          <option value="HNS">Hearing Non-Signer</option>
-        </select>
-      </div>
-      <div id="group-desc" class="hint"></div>
+        <form id="data-entry-form" onsubmit="startExperiment(event)">
+          <div class="form-group">
+            <label>Participant Group:</label>
+            <select id="participant-group" onchange="onGroupChange()" required>
+              <option value="">Select your group...</option>
+              <option value="DF">Deaf Fluent Signer</option>
+              <option value="HF">Hearing Fluent Signer</option>
+              <option value="DNF">Deaf Non-Fluent Signer</option>
+              <option value="HNF">Hearing Non-Fluent Signer</option>
+              <option value="HNS">Hearing Non-Signer</option>
+            </select>
+          </div>
+          <div id="group-desc" class="hint"></div>
 
-      <div class="form-group">
-        <label>Initials:</label>
-        <input type="text" id="initials" maxlength="3" oninput="maybeEnableStart()" style="text-transform: uppercase;">
-      </div>
+          <div class="form-group">
+            <label>Initials:</label>
+            <input type="text" id="initials" maxlength="3" oninput="maybeEnableStart()" style="text-transform: uppercase;" required>
+          </div>
 
-      <div class="form-group">
-        <label>Age:</label>
-        <input type="number" id="age" min="18" max="100" oninput="maybeEnableStart()">
-      </div>
-      <div class="form-group">
-        <label>Gender:</label>
-        <select id="gender" onchange="maybeEnableStart()">
-          <option value="">Select...</option>
-          <option value="male">Male</option>
-          <option value="female">Female</option>
-          <option value="non-binary">Non-binary</option>
-          <option value="prefer-not">Prefer not to say</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Handedness:</label>
-        <select id="handedness" onchange="maybeEnableStart()">
-          <option value="">Select...</option>
-          <option value="right">Right</option>
-          <option value="left">Left</option>
-          <option value="ambidextrous">Ambidextrous</option>
-        </select>
-      </div>
+          <div class="form-group">
+            <label>Age:</label>
+            <input type="number" id="age" min="18" max="100" oninput="maybeEnableStart()" required>
+          </div>
+          <div class="form-group">
+            <label>Gender:</label>
+            <select id="gender" onchange="maybeEnableStart()" required>
+              <option value="">Select...</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="non-binary">Non-binary</option>
+              <option value="prefer-not">Prefer not to say</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Handedness:</label>
+            <select id="handedness" onchange="maybeEnableStart()" required>
+              <option value="">Select...</option>
+              <option value="right">Right</option>
+              <option value="left">Left</option>
+              <option value="ambidextrous">Ambidextrous</option>
+            </select>
+          </div>
 
-      <button class="button" id="start-button" onclick="startExperiment()" disabled>
-        Please select your group first
-      </button>
-    </div>
+          <button type="submit" class="button" id="start-button" disabled>
+            Please select your group first
+          </button>
+        </form>
+      </div>
 
     <!-- Instructions -->
     <div id="instruction-screen" class="screen">
@@ -483,7 +485,8 @@ UP / DOWN / LEFT / RIGHT
     }
 
     /********* START *********/
-    async function startExperiment(){
+    async function startExperiment(event){
+      if (event) event.preventDefault();
       const group = document.getElementById('participant-group').value;
       const initials = document.getElementById('initials').value.trim().toUpperCase();
       const age = document.getElementById('age').value;
