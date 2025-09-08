@@ -85,7 +85,7 @@
       width: 180px;
       height: 180px;
       display: none;
-      touch-action: manipulation;
+      touch-action: none;
     }
     .dpad.right-handed { right: 20px; }
     .dpad.left-handed { left: 20px; }
@@ -213,20 +213,23 @@
 
     // Enhanced mobile/tablet detection
     const isMobile = (() => {
-      // Check for touch capability
-      const hasTouch = ('ontouchstart' in window) || 
-                      (navigator.maxTouchPoints > 0) || 
-                      (navigator.msMaxTouchPoints > 0);
-      
-      // Check user agent for mobile/tablet devices
+      const hasTouch = ('ontouchstart' in window) ||
+                       navigator.maxTouchPoints > 0 ||
+                       navigator.msMaxTouchPoints > 0;
+
+      const ua = navigator.userAgent;
       const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Tablet/i;
-      const isMobileUA = mobileRegex.test(navigator.userAgent);
-      
-      // Check screen size (tablets can be up to 1024px wide)
+      const isMobileUA = mobileRegex.test(ua);
+
       const isSmallScreen = window.innerWidth <= 1024;
-      
-      // Only consider it mobile/tablet if it has touch AND (mobile UA OR small screen)
-      return hasTouch && (isMobileUA || isSmallScreen);
+
+      // Detect iPadOS 13+ which reports Mac in the userAgent
+      const isIpadOS = hasTouch && /Macintosh/i.test(ua);
+
+      // Fallback using coarse pointer query
+      const isCoarse = window.matchMedia ? window.matchMedia('(pointer: coarse)').matches : false;
+
+      return hasTouch && (isMobileUA || isSmallScreen || isIpadOS || isCoarse);
     })();
 
     // Block plan mirrors your Python/earlier JS
@@ -812,17 +815,19 @@ UP / DOWN / LEFT / RIGHT
 
     function setupTouchControls(){
       const dpad = document.getElementById('touch-controls');
+      const handler = (e) => {
+        e.preventDefault();
+        handleResponse({ key: e.currentTarget.dataset.key });
+      };
+
+      const usePointer = window.PointerEvent;
       dpad.querySelectorAll('button').forEach(btn => {
-        btn.addEventListener('touchstart', (e) => {
-          e.preventDefault();
-          handleResponse({ key: btn.dataset.key });
-        }, { passive: false });
-        
-        // Also handle click events for non-touch interactions on tablets
-        btn.addEventListener('click', (e) => {
-          e.preventDefault();
-          handleResponse({ key: btn.dataset.key });
-        });
+        if (usePointer) {
+          btn.addEventListener('pointerdown', handler, { passive: false });
+        } else {
+          btn.addEventListener('touchstart', handler, { passive: false });
+        }
+        btn.addEventListener('click', handler, { passive: false });
       });
     }
 
