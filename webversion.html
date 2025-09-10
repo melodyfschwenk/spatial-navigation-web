@@ -118,9 +118,9 @@
         <label for="participant-group">Participant Group:</label>
         <select id="participant-group" onchange="onGroupChange()">
           <option value="">Select your group...</option>
-          <option value="DF">Deaf Fluent Signer</option>
+          <option value="DF">Deaf or Hard-of-Hearing Fluent Signer</option>
           <option value="HF">Hearing Fluent Signer</option>
-          <option value="DNF">Deaf Non-Fluent Signer</option>
+          <option value="DNF">Deaf or Hard-of-Hearing Non-Fluent Signer</option>
           <option value="HNF">Hearing Non-Fluent Signer</option>
           <option value="HNS">Hearing Non-Signer</option>
         </select>
@@ -204,9 +204,9 @@
     const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbzw_gLBsA5hY1dU7xZ1Fp67FptHEC9veo95vyId0bBOfu_QLMNFm02Rg0iRzURzx2Cn/exec';
 
     const GROUP_DESCRIPTIONS = {
-      DF: 'Deaf individuals who are fluent in sign language',
+      DF: 'Deaf or hard-of-hearing individuals who are fluent in sign language',
       HF: 'Hearing individuals who are fluent in sign language',
-      DNF: 'Deaf individuals who are not fluent in sign language',
+      DNF: 'Deaf or hard-of-hearing individuals who are not fluent in sign language',
       HNF: 'Hearing individuals who are not fluent in sign language',
       HNS: 'Hearing individuals who do not know sign language'
     };
