@@ -1,944 +1,185 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Spatial Navigation Task</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spatial Navigation Task - Sign Language Research</title>
 
-  <!-- IMPORTANT: this must define a global `stimulusMapping` with
-       { easy: [...], hard: [...], control: [...] } -->
-  <script src="stimulus_mappings.js"></script>
-
-  <style>
-    body {
-      margin: 0; padding: 0;
-      font-family: Arial, sans-serif;
-      background: #fff; color: #222;
-      height: 100vh; display: flex; align-items: center; justify-content: center;
-      overflow: hidden;
-    }
-    #experiment-container {
-      position: relative;
-      width: 100%; max-width: 860px; height: 100vh;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-    }
-    .screen { display: none; text-align: center; padding: 20px; }
-    .screen.active { display: block; }
-
-    .stimulus-stage {
-      width: 500px; height: 500px; margin: 0 auto; position: relative;
-      display: flex; align-items: center; justify-content: center;
-    }
-    #stimulus-image {
-      position: absolute; inset: 0; width: 100%; height: 100%;
-      object-fit: contain; border: 2px solid #ddd; display: none;
-      pointer-events: none;
-    }
-    .fixation { position: absolute; width: 64px; height: 64px; display: none; }
-    .fixation::before, .fixation::after {
-      content: ""; position: absolute; background: #333; border-radius: 1px;
-    }
-    .fixation::before { left: 50%; transform: translateX(-50%); top: 0; width: 2px; height: 100%; }
-    .fixation::after  { top: 50%; transform: translateY(-50%); left: 0; width: 100%; height: 2px; }
-
-    .instruction-text { font-size: 18px; line-height: 1.5; max-width: 640px; margin: 0 auto; }
-    .button {
-      background: #4CAF50; color: #fff; border: 0; border-radius: 6px;
-      padding: 12px 22px; font-size: 16px; cursor: pointer; margin-top: 14px;
-    }
-    .button:hover { background: #45a049; }
-    .button:disabled { background: #bbb; cursor: not-allowed; }
-
-    .progress { position: absolute; top: 10px; right: 10px; font-size: 14px; color: #666; }
-    #loading-msg {
-      position: absolute;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 24px;
-      font-weight: bold;
-      display: none;
-    }
-
-    .nav-type-header {
-      display: inline-block; padding: 8px 16px; border-radius: 6px; color: #fff; font-weight: bold; margin: 10px 0 16px;
-    }
-    .egocentric-header { background: #4CAF50; }
-    .allocentric-header { background: #9C27B0; }
-    .control-header   { background: #FF9800; }
-
-    .form-group { margin: 10px 0; }
-    .form-group label { display: inline-block; width: 160px; text-align: right; margin-right: 10px; }
-    input[type="number"], input[type="text"], select {
-      padding: 8px; font-size: 16px; width: 220px; border: 1px solid #ddd; border-radius: 4px;
-    }
-
-    .hint { font-size: 12px; color: #666; font-style: italic; margin-top: 6px; }
-
-    /* Practice helpers */
-    #practice-banner { display:none; }
-    #practice-helper { display:none; margin-top:10px; font-size:14px; color:#555; }
-
-    /* Touchscreen D-pad - Hidden by default, only shown on mobile/tablet */
-    .dpad {
-      position: absolute;
-      bottom: 80px;
-      width: 180px;
-      height: 180px;
-      display: none;
-      touch-action: none;
-    }
-    .dpad.right-handed { right: 20px; }
-    .dpad.left-handed { left: 20px; }
-    .dpad-button {
-      position: absolute;
-      width: 60px;
-      height: 60px;
-      font-size: 24px;
-      border-radius: 8px;
-      border: 1px solid #aaa;
-      background: #f0f0f0;
-    }
-    .dpad-button.up { left: 60px; top: 0; }
-    .dpad-button.left { left: 0; top: 60px; }
-    .dpad-button.down { left: 60px; top: 120px; }
-    .dpad-button.right { left: 120px; top: 60px; }
-    .dpad-button:active { background: #ddd; }
-  </style>
+       <script>
+        // Check if we're embedded
+        if (window !== window.top) {
+            // Check if parent is from your study domain
+            try {
+                const parentUrl = document.referrer;
+                if (parentUrl.includes('melodyfschwenk.github.io')) {
+                    // We're embedded in the main study, skip to task
+                    window.location.replace('webversion.html');
+                }
+            } catch(e) {
+                // Cross-origin, assume it's embedded and redirect
+                window.location.replace('webversion.html');
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 50px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            margin: 20px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 18px;
+        }
+        .start-button {
+            display: inline-block;
+            padding: 18px 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 50px;
+            font-size: 20px;
+            font-weight: bold;
+            margin: 30px 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            border: none;
+            cursor: pointer;
+        }
+        .start-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(102, 126, 234, 0.5);
+        }
+        .info-box {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 30px 0;
+            text-align: left;
+        }
+        .info-box h3 {
+            color: #667eea;
+            margin-top: 0;
+        }
+        .info-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            color: #555;
+        }
+        .info-item strong {
+            min-width: 120px;
+            color: #333;
+        }
+        .requirements {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #ffc107;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .requirements h4 {
+            margin-top: 0;
+            color: #856404;
+        }
+        .requirements ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+            color: #666;
+            font-size: 14px;
+        }
+        .icon {
+            width: 20px;
+            height: 20px;
+            margin-right: 10px;
+            fill: #667eea;
+        }
+    </style>
 </head>
 <body>
-  <div id="experiment-container">
-    <div id="loading-msg">Loading…</div>
-    <div class="progress" id="progress" aria-live="polite"></div>
-
-    <!-- Data Entry -->
-    <div id="data-entry-screen" class="screen active">
-      <h2>Spatial Navigation Task</h2>
-
-      <div class="form-group">
-        <label for="participant-group">Participant Group:</label>
-        <select id="participant-group" onchange="onGroupChange()">
-          <option value="">Select your group...</option>
-          <option value="DF">Deaf or Hard-of-Hearing Fluent Signer</option>
-          <option value="HF">Hearing Fluent Signer</option>
-          <option value="DNF">Deaf or Hard-of-Hearing Non-Fluent Signer</option>
-          <option value="HNF">Hearing Non-Fluent Signer</option>
-          <option value="HNS">Hearing Non-Signer</option>
-        </select>
-      </div>
-      <div id="group-desc" class="hint"></div>
-
-      <div class="form-group">
-        <label for="initials">Initials:</label>
-        <input type="text" id="initials" maxlength="3" oninput="maybeEnableStart()" style="text-transform: uppercase;">
-      </div>
-
-      <div class="form-group">
-        <label for="age">Age:</label>
-        <input type="number" id="age" min="18" max="100" oninput="maybeEnableStart()">
-      </div>
-      <div class="form-group">
-        <label for="gender">Gender:</label>
-        <select id="gender" onchange="maybeEnableStart()">
-          <option value="">Select...</option>
-          <option value="male">Male</option>
-          <option value="female">Female</option>
-          <option value="non-binary">Non-binary</option>
-          <option value="prefer-not">Prefer not to say</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label for="handedness">Handedness:</label>
-        <select id="handedness" onchange="maybeEnableStart()">
-          <option value="">Select...</option>
-          <option value="right">Right</option>
-          <option value="left">Left</option>
-          <option value="ambidextrous">Ambidextrous</option>
-        </select>
-      </div>
-
-      <button class="button" id="start-button" onclick="startExperiment()" disabled>
-        Please select your group first
-      </button>
-    </div>
-
-    <!-- Instructions -->
-    <div id="instruction-screen" class="screen">
-      <div id="nav-type-indicator"></div>
-      <div id="instruction-text" class="instruction-text"></div>
-      <button class="button" id="instruction-continue">Continue</button>
-    </div>
-
-    <!-- Stimulus -->
-    <div id="stimulus-screen" class="screen">
-      <!-- practice badge shown only during practice -->
-      <div id="practice-banner" class="nav-type-header"></div>
-
-      <div class="stimulus-stage">
-        <img id="stimulus-image" alt="" aria-hidden="true">
-        <div class="fixation" id="fixation" aria-hidden="true"></div>
-      </div>
-
-      <!-- practice legend (practice only) -->
-      <div id="practice-helper"></div>
-    </div>
-
-    <!-- Feedback / Completion -->
-    <div id="feedback-screen" class="screen">
-      <div id="feedback-text" style="font-size:24px; margin: 20px;" aria-live="polite"></div>
-      <button class="button" id="download-data" onclick="downloadData()" style="display:none;">Download Data</button>
-    </div>
-
-    <!-- Touch controls - Only visible on mobile/tablet devices -->
-    <div id="touch-controls" class="dpad right-handed">
-      <button class="dpad-button up" data-key="ArrowUp">&#9650;</button>
-      <button class="dpad-button left" data-key="ArrowLeft">&#9664;</button>
-      <button class="dpad-button down" data-key="ArrowDown">&#9660;</button>
-      <button class="dpad-button right" data-key="ArrowRight">&#9654;</button>
-    </div>
-  </div>
-
-  <script>
-    const loadingMsgEl = document.getElementById('loading-msg');
-    loadingMsgEl.style.display = 'block';
-    /********* CONFIG *********/
-    const GOOGLE_SHEET_URL = 'https://script.google.com/macros/s/AKfycbzw_gLBsA5hY1dU7xZ1Fp67FptHEC9veo95vyId0bBOfu_QLMNFm02Rg0iRzURzx2Cn/exec';
-    const GROUP_DESCRIPTIONS = {
-      DF: 'Deaf or hard-of-hearing individuals who are fluent in sign language',
-      HF: 'Hearing individuals who are fluent in sign language',
-      DNF: 'Deaf or hard-of-hearing individuals who are not fluent in sign language',
-      HNF: 'Hearing individuals who are not fluent in sign language',
-      HNS: 'Hearing individuals who do not know sign language'
-    };
-
-    // Enhanced mobile/tablet detection
-    const isMobile = (() => {
-      const hasTouch = ('ontouchstart' in window) ||
-                       navigator.maxTouchPoints > 0 ||
-                       navigator.msMaxTouchPoints > 0;
-
-      const ua = navigator.userAgent;
-      const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|Tablet/i;
-      const isMobileUA = mobileRegex.test(ua);
-
-      const isSmallScreen = window.innerWidth <= 1024;
-
-      // Detect iPadOS 13+ which reports Mac in the userAgent
-      const isIpadOS = hasTouch && /Macintosh/i.test(ua);
-
-      // Fallback using coarse pointer query
-      const isCoarse = window.matchMedia ? window.matchMedia('(pointer: coarse)').matches : false;
-
-      return hasTouch && (isMobileUA || isSmallScreen || isIpadOS || isCoarse);
-    })();
-
-    // Block plan mirrors your Python/earlier JS
-    const config = {
-      trialsPerBlock: 15,
-      maxResponseTime: 3000,   // ms
-      fixationDuration: 800,   // ms
-      itiDuration: 400,        // ms (main task only)
-      practiceTrials: 4,       // 2 ego + 2 allo
-      repetitions: 2,          // each (ego/allo)×(easy/hard) twice
-      navigationTypes: ['egocentric', 'allocentric'],
-      difficultyLevels: ['easy', 'hard'],
-      blocks: []
-    };
-
-    const state = {
-      participantInfo: {},
-      taskData: {},
-      isPractice: false,
-      currentBlock: 0,
-      currentTrial: 0,
-      currentBlockStimuli: [],
-      usedStimuliTracker: {},   // key "nav_diff" -> Set(ids)
-      currentStimulus: null,
-      currentNavType: null,
-      currentDifficulty: null,
-      stimulusOnsetTime: null,
-      responseTimeout: null,
-      onKeyHandler: null,
-      allData: [],
-      blockData: []
-    };
-
-    /********* INSTRUCTIONS *********/
-    const INSTRUCTIONS = {
-      full: {
-        egocentric: `
-In this task, you will move from the gray player to the red stop sign while avoiding blue walls.
-The gray triangle shows which way the player is facing.
-Your job is to choose the first step the player should take. Make your choice as if you are the player.
-
-Use these keys:
-• UP arrow: Move forward (in the direction the player is facing)
-• DOWN arrow: Move backward
-• LEFT arrow: Move to the player's left
-• RIGHT arrow: Move to the player's right
-
-Example: UP moves you forward in whatever direction you're facing.
-Choose the first step needed to reach the stop sign. Try to respond quickly and correctly.
-        `,
-        allocentric: `
-In this task, you will move from the gray player to the red stop sign while avoiding blue walls.
-Your job is to choose the first step the player should take using screen directions (like a map).
-
-Use these keys:
-• UP arrow: Toward the top of the screen
-• DOWN arrow: Toward the bottom of the screen
-• LEFT arrow: Toward the left side of the screen
-• RIGHT arrow: Toward the right side of the screen
-
-No matter which way the player is facing, pressing UP always moves toward the top of the screen.
-Choose the first step needed to reach the target. Try to respond quickly and correctly.
-        `,
-        control: `
-In this task, you will see arrows showing the path from the player to the target.
-Your job is to follow the first arrow from the player's position.
-
-Use these keys:
-• UP arrow: When the first arrow points up
-• DOWN arrow: When the first arrow points down
-• LEFT arrow: When the first arrow points left
-• RIGHT arrow: When the first arrow points right
-
-Example: Press the RIGHT arrow key if the first arrow points right.
-Try to respond quickly and correctly.
-        `
-      },
-      brief: {
-        egocentric: `
-PLAYER VIEW:
-UP = forward (direction you're facing)
-DOWN = backward
-LEFT = to your left
-RIGHT = to your right
-        `,
-        allocentric: `
-MAP VIEW:
-UP = toward the top of the screen
-DOWN = toward the bottom of the screen
-LEFT = toward the left of the screen
-RIGHT = toward the right of the screen
-        `,
-        control: `
-ARROW FOLLOWING:
-Press the arrow matching the FIRST arrow from the player.
-UP / DOWN / LEFT / RIGHT
-        `
-      }
-    };
-
-    function prettyHeader(navType) {
-      return navType === 'egocentric' ? 'PLAYER VIEW'
-           : navType === 'allocentric' ? 'MAP VIEW'
-           : 'ARROW FOLLOWING';
-    }
-
-    /********* UTILS *********/
-    function showScreen(id) {
-      ['data-entry-screen','instruction-screen','stimulus-screen','feedback-screen'].forEach(s => {
-        const el = document.getElementById(s);
-        if (el) el.classList.toggle('active', s === id);
-      });
-    }
-    function setInstructionContinue(handler) {
-      const btn = document.getElementById('instruction-continue');
-      btn.onclick = handler;
-      btn.style.display = 'inline-block';
-    }
-    function hideInstructionContinue(){ document.getElementById('instruction-continue').style.display = 'none'; }
-
-    function updateProgress() {
-      const el = document.getElementById('progress');
-      if (state.isPractice) {
-        el.textContent = `Practice ${state.currentTrial + 1}/${config.practiceTrials}`;
-      } else {
-        const totalBlocks = config.blocks.length || 1;
-        el.textContent = `Block ${state.currentBlock + 1}/${totalBlocks} | Trial ${state.currentTrial + 1}/${config.trialsPerBlock}`;
-      }
-    }
-    function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
-
-    class RNG {
-      constructor(seed){ this.seed = seed; }
-      random(){
-        let t = this.seed += 0x6D2B79F5;
-        t = Math.imul(t ^ t >>> 15, t | 1);
-        t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-        return ((t ^ t >>> 14) >>> 0) / 4294967296;
-      }
-      shuffle(arr){
-        const a = [...arr];
-        for (let i=a.length-1; i>0; i--){
-          const j = Math.floor(this.random()*(i+1));
-          [a[i],a[j]]=[a[j],a[i]];
-        }
-        return a;
-      }
-    }
-    function rngFromId(id){
-      const base = String(id).split('').reduce((acc,c)=>acc+c.charCodeAt(0),0);
-      const jitter = Date.now()%1000;
-      return new RNG(base*1000 + jitter);
-    }
-    function determineCounterbalance(participantId){
-      const m = String(participantId).match(/\d+/);
-      const n = m ? parseInt(m[0],10) : [...String(participantId)].reduce((a,c)=>a+c.charCodeAt(0),0);
-      return (n % 4) + 1;
-    }
-    function createBlockSequence(counterbalance){
-      const latin = [
-        [['egocentric','easy'], ['egocentric','hard'], ['allocentric','easy'], ['allocentric','hard']],
-        [['egocentric','hard'], ['allocentric','hard'], ['egocentric','easy'], ['allocentric','easy']],
-        [['allocentric','easy'], ['egocentric','easy'], ['allocentric','hard'], ['egocentric','hard']],
-        [['allocentric','hard'], ['allocentric','easy'], ['egocentric','hard'], ['egocentric','easy']]
-      ];
-      const base = latin[counterbalance-1];
-      const seq = [];
-      for (let r=0; r<config.repetitions; r++){
-        base.forEach(([n,d]) => seq.push({navType:n, difficulty:d}));
-      }
-      // Insert a single control block mid-run
-      seq.splice(4, 0, {navType:'control', difficulty:'control'});
-      return seq;
-    }
-    function ensureEnough(stimuli, need, rng){
-      if (stimuli.length === 0) return [];
-      let pool = [...stimuli];
-      if (pool.length < need) {
-        const reps = Math.ceil(need / pool.length);
-        pool = Array.from({length: reps}, ()=>rng.shuffle(stimuli)).flat();
-      }
-      pool = rng.shuffle(pool);
-      return pool.slice(0, need);
-    }
-    function prepareBlockStimuli(navType, difficulty, blockIndex, rng, count){
-      const bucket = stimulusMapping && stimulusMapping[difficulty];
-      if (!bucket || !bucket.length) return [];
-      const key = navType + '_' + difficulty;
-      if (!state.usedStimuliTracker[key]) state.usedStimuliTracker[key] = new Set();
-
-      const unused = bucket.filter(s => !state.usedStimuliTracker[key].has(s.id));
-      const used   = bucket.filter(s =>  state.usedStimuliTracker[key].has(s.id));
-      let pool = [...unused, ...used];
-      for (let i=0;i<2;i++) pool = rng.shuffle(pool);
-
-      const chosen = ensureEnough(pool, count, rng);
-      chosen.forEach(s => state.usedStimuliTracker[key].add(s.id));
-      return chosen;
-    }
-    async function preloadImages(stimuli) {
-      await Promise.all(stimuli.map(s => new Promise(res => {
-        const img = new Image(); img.onload = res; img.onerror = res; img.src = s.file;
-      })));
-    }
-
-    // Fixed function to send data to Google Sheets with consistent format
-    async function sendToSheets(payload){
-      try {
-        const response = await fetch(GOOGLE_SHEET_URL, {
-          method: 'POST',
-          mode: 'no-cors',  // This prevents CORS errors but means we can't read the response
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(payload)
-        });
-        // Note: With no-cors, we can't check the response, but the data should still be sent
-      } catch(e) {
-        console.error('Failed to send to sheets:', e);
-      }
-    }
-
-    async function saveToGoogleSheet(payload){
-      // Add user agent to all payloads
-      const enrichedPayload = {
-        ...payload,
-        user_agent: navigator.userAgent
-      };
-      
-      await sendToSheets(enrichedPayload);
-    }
-
-    function startTask(taskCode) {
-      if (!taskCode) return;
-      if (!state.taskData) state.taskData = {};
-      state.taskData[taskCode] = { startTime: Date.now() };
-    }
-
-    function completeTask(taskCode) {
-      if (!taskCode) return;
-      const startTime = state.taskData && state.taskData[taskCode]?.startTime || Date.now();
-      const timeSpent = Date.now() - startTime;
-      // We can log this locally since the main data is already being saved
-      console.log(`Task ${taskCode} completed in ${Math.round(timeSpent/1000)} seconds`);
-    }
-
-    /********* FORM *********/
-    function onGroupChange(){
-      const group = document.getElementById('participant-group').value;
-      const desc = document.getElementById('group-desc');
-      desc.textContent = group ? (GROUP_DESCRIPTIONS[group] || '') : '';
-      maybeEnableStart();
-    }
-    function maybeEnableStart(){
-      const group = document.getElementById('participant-group').value;
-      const initials = document.getElementById('initials').value.trim();
-      const age = document.getElementById('age').value;
-      const gender = document.getElementById('gender').value;
-      const handedness = document.getElementById('handedness').value;
-      const startBtn = document.getElementById('start-button');
-      const ready = group && initials && age && gender && handedness;
-      startBtn.disabled = !ready;
-      startBtn.textContent = ready ? 'Start Experiment' : 'Fill in all fields to start';
-    }
-
-    /********* START *********/
-    async function startExperiment(){
-      const group = document.getElementById('participant-group').value;
-      const initials = document.getElementById('initials').value.trim().toUpperCase();
-      const age = document.getElementById('age').value;
-      const gender = document.getElementById('gender').value;
-      const handedness = document.getElementById('handedness').value;
-      if (!group || !initials || !age || !gender || !handedness) return alert('Please fill in all required fields');
-
-      const btn = document.getElementById('start-button');
-      btn.disabled = true; 
-      btn.textContent = 'Starting experiment...';
-
-      // Simple ID generation using initials and timestamp
-      const timestamp = Date.now();
-      const shortTimestamp = timestamp.toString(36).slice(-6); // Last 6 chars of base36 timestamp
-      const assignedId = `${group}-${initials}-${shortTimestamp}`;
-
-      state.participantInfo = { 
-        id: assignedId, 
-        initials, 
-        group, 
-        age, 
-        gender, 
-        handedness, 
-        timestamp: new Date().toISOString() 
-      };
-      state.sessionCode = assignedId;
-      startTask('spatial_navigation');
-
-      // Position on-screen dpad based on handedness (only if mobile)
-      if (isMobile) {
-        const dpad = document.getElementById('touch-controls');
-        dpad.classList.toggle('left-handed', handedness === 'left');
-        dpad.classList.toggle('right-handed', handedness !== 'left');
-      }
-
-      const cb = determineCounterbalance(assignedId);
-      config.blocks = createBlockSequence(cb);
-      state.usedStimuliTracker = {};
-
-      // Practice intro - mention controls based on device type
-      const txt = document.getElementById('instruction-text');
-      const head = document.getElementById('nav-type-indicator'); head.className=''; head.textContent='';
-      const controlInfo = isMobile 
-        ? '<p>You will use the on-screen arrow buttons to respond.</p>'
-        : '<p>You will use your keyboard arrow keys to respond.</p>';
-      
-      txt.innerHTML = `
-        <h3>Practice Phase</h3>
-        <p>You will practice two quick examples of each navigation type.</p>
-        <p><strong>PLAYER VIEW</strong>: act as if you are the player (UP=forward, DOWN=backward, LEFT/RIGHT=turn)</p>
-        <p><strong>MAP VIEW</strong>: use map directions (UP=top, DOWN=bottom, LEFT=west, RIGHT=east)</p>
-        ${controlInfo}
-        <p>Press Continue when you're ready to start practice.</p>`;
-      setInstructionContinue(()=> { state.isPractice = true; state.currentTrial = 0; runPracticeTrial(); });
-      showScreen('instruction-screen');
-
-      btn.disabled = false; 
-      btn.textContent = 'Start Experiment';
-    }
-
-    /********* PRACTICE HELPERS *********/
-    function setPracticeBadgeAndLegend(navType) {
-      const banner = document.getElementById('practice-banner');
-      const helper = document.getElementById('practice-helper');
-
-      if (!state.isPractice) { banner.style.display = 'none'; helper.style.display = 'none'; return; }
-
-      banner.className = `nav-type-header ${navType}-header`;
-      banner.textContent = (navType === 'egocentric' ? 'PLAYER VIEW' : 'MAP VIEW') + ' practice';
-      banner.style.display = 'inline-block';
-
-      helper.style.display = 'block';
-      helper.innerHTML = (navType === 'egocentric')
-        ? 'Legend (practice only): UP=forward · DOWN=backward · LEFT=turn left · RIGHT=turn right'
-        : 'Legend (practice only): UP=top · DOWN=bottom · LEFT=left · RIGHT=right';
-    }
-    async function showPracticeTypeBanner(navType, thenStartFn){
-      const head = document.getElementById('nav-type-indicator');
-      const txt  = document.getElementById('instruction-text');
-
-      head.className = `nav-type-header ${navType}-header`;
-      head.textContent = navType === 'egocentric' ? 'PLAYER VIEW' : 'MAP VIEW';
-
-      const blurb = (navType === 'egocentric')
-        ? 'UP=forward · DOWN=backward · LEFT=turn left · RIGHT=turn right'
-        : 'UP=top · DOWN=bottom · LEFT=left · RIGHT=right';
-
-      hideInstructionContinue();
-      showScreen('instruction-screen');
-
-      for (let i=3; i>=1; i--){
-        txt.innerHTML = `
-          <p><strong>${head.textContent}</strong> practice (2 quick questions)</p>
-          <p>${blurb}</p>
-          <p>Starting in ${i}…</p>`;
-        await sleep(1000);
-      }
-      thenStartFn();
-    }
-
-    /********* PRACTICE FLOW *********/
-    function runPracticeTrial(){
-      if (!state.isPractice) return;
-
-      if (state.currentTrial >= config.practiceTrials) {
-        state.isPractice = false;
-        state.currentBlock = 0; state.currentTrial = 0;
-
-        const txt = document.getElementById('instruction-text');
-        const head = document.getElementById('nav-type-indicator'); head.className=''; head.textContent='';
-        txt.innerHTML = `
-          <h3>Practice Complete</h3>
-          <p>The main task will begin next.</p>
-          <p>You can take a short break now. Press <strong>Continue</strong> when ready.</p>`;
-        setInstructionContinue(showBlockInstructions);
-        showScreen('instruction-screen');
-        return;
-      }
-
-      const navType = state.currentTrial < 2 ? 'egocentric' : 'allocentric';
-
-      if (state.currentTrial === 0 || state.currentTrial === 2) {
-        return showPracticeTypeBanner(navType, () => {
-          setPracticeBadgeAndLegend(navType);
-          const stim = stimulusMapping.easy[state.currentTrial % stimulusMapping.easy.length];
-          presentStimulus(stim, navType, 'practice');
-          updateProgress();
-        });
-      }
-
-      setPracticeBadgeAndLegend(navType);
-      const stim = stimulusMapping.easy[state.currentTrial % stimulusMapping.easy.length];
-      presentStimulus(stim, navType, 'practice');
-      updateProgress();
-    }
-
-    /********* MAIN BLOCKS *********/
-    function showBlockInstructions(){
-      const block = config.blocks[state.currentBlock];
-      const head = document.getElementById('nav-type-indicator');
-      const txt = document.getElementById('instruction-text');
-
-      const name = prettyHeader(block.navType);
-      head.className = `nav-type-header ${block.navType}-header`;
-      head.textContent = name;
-
-      const controlMethod = isMobile ? 'on-screen arrow buttons' : 'arrow keys';
-      
-      const msg = {
-        egocentric: `Navigate from the gray player to the red stop sign.<br><br>
-                     Use ${controlMethod} as if YOU are the player:<br>
-                     UP=forward, DOWN=backward, LEFT=turn left, RIGHT=turn right`,
-        allocentric:`Navigate from the gray player to the red stop sign.<br><br>
-                     Use ${controlMethod} as map directions:<br>
-                     UP=top, DOWN=bottom, LEFT=west, RIGHT=east`,
-        control:    `Follow the arrows shown.<br><br>
-                     Press the ${controlMethod === 'arrow keys' ? 'arrow key' : 'arrow button'} matching the FIRST arrow from the player.`
-      };
-      txt.innerHTML = msg[block.navType];
-
-      setInstructionContinue(startBlock);
-      updateProgress();
-      showScreen('instruction-screen');
-    }
-
-    async function startBlock(){
-      const block = config.blocks[state.currentBlock];
-      const rng = rngFromId(state.participantInfo.id + '_b' + state.currentBlock);
-      state.currentBlockStimuli = prepareBlockStimuli(block.navType, block.difficulty, state.currentBlock, rng, config.trialsPerBlock);
-      state.currentTrial = 0; state.blockData = [];
-
-      // Hide practice helpers
-      document.getElementById('practice-banner').style.display = 'none';
-      document.getElementById('practice-helper').style.display = 'none';
-
-      await preloadImages(state.currentBlockStimuli);
-      nextTrial();
-    }
-
-    function nextTrial(){
-      if (state.isPractice) return;
-
-      if (state.currentTrial >= config.trialsPerBlock) {
-        state.allData.push(...state.blockData);
-        state.currentBlock++;
-        if (state.currentBlock >= config.blocks.length) {
-          showCompletion();
-        } else {
-          showBlockInstructions(); // break between blocks
-        }
-        return;
-      }
-
-      const block = config.blocks[state.currentBlock];
-      const stim = state.currentBlockStimuli[state.currentTrial];
-      if (!stim) {
-        state.currentTrial++;
-        return nextTrial();
-      }
-
-      presentStimulus(stim, block.navType, block.difficulty);
-      updateProgress();
-    }
-
-    /********* PRESENT & RESPOND *********/
-    function presentStimulus(stimulus, navType, difficulty){
-      state.currentStimulus = stimulus;
-      state.currentNavType = navType;
-      state.currentDifficulty = difficulty;
-
-      if (state.isPractice) setPracticeBadgeAndLegend(navType);
-
-      const img = document.getElementById('stimulus-image');
-      const fix = document.getElementById('fixation');
-      const dpad = document.getElementById('touch-controls');
-
-      window.focus();
-      img.style.display = 'none';
-      fix.style.display = 'block';
-      dpad.style.display = 'none'; // Always hide initially
-      showScreen('stimulus-screen');
-
-      setTimeout(()=> {
-        fix.style.display = 'none';
-        img.src = stimulus.file;
-        img.style.display = 'block';
-        state.stimulusOnsetTime = performance.now();
+    <main class="container">
+        <h1>Spatial Navigation Task</h1>
+        <p class="subtitle">Sign Language & Spatial Cognition Research</p>
         
-        // Only show D-pad on mobile/tablet devices
-        if (isMobile) {
-          dpad.style.display = 'block';
+        <div class="info-box">
+            <h3>Study Information</h3>
+            <div class="info-item">
+                <strong>Duration:</strong> Approximately 6–8 minutes; anything beyond 10 is unusual
+            </div>
+            <div class="info-item">
+                <strong>Trials:</strong> 135 trials across 9 blocks
+            </div>
+            <div class="info-item">
+                <strong>Task Types:</strong> Player view & Map view navigation
+            </div>
+            <div class="info-item">
+                <strong>Practice:</strong> 4 practice trials included
+            </div>
+        </div>
+        
+        <div class="requirements">
+            <h4>⚠️ Requirements</h4>
+            <ul>
+                <li>Device with a keyboard or touchscreen (on-screen arrow buttons are provided on touch devices)</li>
+                <li>Stable internet connection</li>
+                <li>Quiet environment without distractions</li>
+                <li>Chrome or Firefox browser recommended</li>
+            </ul>
+        </div>
+        
+        <button id="start-button" class="start-button" type="button" aria-label="Begin experiment">Begin Experiment</button>
+        
+        <div class="info-box">
+            <h3>What You'll Do</h3>
+            <p>Navigate through simple mazes using two different strategies:</p>
+            <ul style="text-align: left; color: #555;">
+                <li><strong>Player View:</strong> Navigate as if you are the player in the maze</li>
+                <li><strong>Map View:</strong> Navigate using compass directions</li>
+            </ul>
+            <p style="margin-top: 15px;">Your responses help us understand how sign language experience affects spatial thinking.</p>
+        </div>
+
+        <div class="footer">
+            <p>For technical support or questions, contact the research team at <a href="mailto:action.brain.lab@gallaudet.edu">action.brain.lab@gallaudet.edu</a>.</p>
+            <p style="margin-top: 10px; font-size: 12px;">
+                Your data is automatically saved and kept confidential.<br>
+                Participant IDs are anonymized for privacy.
+            </p>
+        </div>
+
+    </main>
+    <script>
+        function startExperiment(){
+            window.location.href = 'webversion.html';
         }
 
-        state.onKeyHandler = (e)=> {
-          if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
-          handleResponse(e);
-        };
-        document.addEventListener('keydown', state.onKeyHandler, { once: true, passive: false });
-
-        state.responseTimeout = setTimeout(()=> {
-          if (state.onKeyHandler) {
-            document.removeEventListener('keydown', state.onKeyHandler);
-            state.onKeyHandler = null;
-          }
-          handleResponse({ key: 'timeout' });
-        }, config.maxResponseTime);
-
-      }, config.fixationDuration);
-    }
-
-    function handleResponse(event){
-      const valid = ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight','timeout'];
-      const key = event.key || event;
-      if (!valid.includes(key)) {
-        document.addEventListener('keydown', state.onKeyHandler = (e)=> {
-          if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
-          handleResponse(e);
-        }, { once: true, passive: false });
-        return;
-      }
-
-      clearTimeout(state.responseTimeout);
-      if (state.onKeyHandler) {
-        document.removeEventListener('keydown', state.onKeyHandler);
-        state.onKeyHandler = null;
-      }
-
-      // Always hide touch controls after a response
-      document.getElementById('touch-controls').style.display = 'none';
-
-      const map = { ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right', timeout:'none' };
-      const response = map[key];
-      const tooSlow = (key === 'timeout');
-      const rt = tooSlow ? null : Math.round(performance.now() - state.stimulusOnsetTime);
-
-      let correct;
-      if (state.currentNavType === 'egocentric')
-        correct = state.currentStimulus.egocentric_correct;
-      else if (state.currentNavType === 'allocentric')
-        correct = state.currentStimulus.allocentric_correct;
-      else
-        correct = state.currentStimulus.egocentric_correct ?? state.currentStimulus.allocentric_correct;
-
-      const accuracy = (!tooSlow && response === correct) ? 1 : 0;
-
-      const common = {
-        participant_id: state.participantInfo.id,
-        participant_initials: state.participantInfo.initials,
-        participant_group: state.participantInfo.group,
-        age: state.participantInfo.age,
-        gender: state.participantInfo.gender,
-        handedness: state.participantInfo.handedness,
-        navigation_type: state.currentNavType,
-        difficulty: state.currentDifficulty,
-        stimulus_id: state.currentStimulus.id,
-        response, 
-        correct_response: correct, 
-        accuracy, 
-        rt_ms: rt,
-        timestamp: new Date().toISOString(),
-        device_type: isMobile ? 'mobile/tablet' : 'desktop'
-      };
-
-      if (state.isPractice) {
-        saveToGoogleSheet({ ...common, block: 'practice', trial: state.currentTrial + 1 });
-        showPracticeFeedback(accuracy, tooSlow);
-      } else {
-        const trialNum = state.currentTrial + 1;
-        state.blockData.push({ ...common, block: state.currentBlock + 1, trial: trialNum });
-        saveToGoogleSheet({ ...common, block: state.currentBlock + 1, trial: trialNum });
-
-        state.currentTrial += 1;
-        setTimeout(()=> nextTrial(), config.itiDuration);
-      }
-    }
-
-    function setupTouchControls(){
-      const dpad = document.getElementById('touch-controls');
-      const handler = (e) => {
-        e.preventDefault();
-        handleResponse({ key: e.currentTarget.dataset.key });
-      };
-
-      const usePointer = window.PointerEvent;
-      dpad.querySelectorAll('button').forEach(btn => {
-        if (usePointer) {
-          btn.addEventListener('pointerdown', handler, { passive: false });
-        } else {
-          btn.addEventListener('touchstart', handler, { passive: false });
-        }
-        btn.addEventListener('click', handler, { passive: false });
-      });
-    }
-
-    function showPracticeFeedback(ok, tooSlow){
-      const txt = document.getElementById('feedback-text');
-      const dl  = document.getElementById('download-data');
-      txt.textContent = tooSlow ? 'Too slow' : (ok ? 'Correct!' : 'Incorrect');
-      txt.style.color = tooSlow ? '#e67e22' : (ok ? 'green' : 'red');
-      dl.style.display = 'none';
-      showScreen('feedback-screen');
-
-      const blockKeys = (e)=> e.stopPropagation();
-      document.addEventListener('keydown', blockKeys, true);
-
-      setTimeout(()=> {
-        document.removeEventListener('keydown', blockKeys, true);
-        showScreen('stimulus-screen');
-        state.currentTrial += 1;
-        runPracticeTrial();
-      }, 1200);
-    }
-
-    /********* FINISH *********/
-    async function showCompletion(){
-      const totalCorrect = state.allData.filter(d=>d.accuracy===1).length;
-      const acc = state.allData.length ? (totalCorrect / state.allData.length * 100).toFixed(1) : '—';
-      const meanRt = (
-        state.allData.reduce((s,d)=> s + (d.rt_ms || 0), 0) /
-        Math.max(1, state.allData.filter(d=>d.rt_ms!=null).length)
-      ).toFixed(0);
-
-      const summary = {
-        participant_id: state.participantInfo.id,
-        participant_initials: state.participantInfo.initials,
-        participant_group: state.participantInfo.group,
-        age: state.participantInfo.age,
-        gender: state.participantInfo.gender,
-        handedness: state.participantInfo.handedness,
-        total_trials: state.allData.length,
-        total_correct: totalCorrect,
-        overall_accuracy: acc,
-        mean_rt: meanRt,
-        completion_time: new Date().toISOString(),
-        trial: 'SUMMARY', 
-        block: 'SUMMARY', 
-        navigation_type: 'SUMMARY', 
-        difficulty: 'SUMMARY',
-        device_type: isMobile ? 'mobile/tablet' : 'desktop'
-      };
-      
-      await saveToGoogleSheet(summary);
-      completeTask('spatial_navigation');
-
-      const txt = document.getElementById('feedback-text');
-      const dl  = document.getElementById('download-data');
-      txt.innerHTML = `
-        <h2>Experiment Complete!</h2>
-        <p>Thank you for participating.</p>
-        <p>Your data has been saved.</p>
-        <p>Participant ID: ${state.participantInfo.id}</p>`;
-      txt.style.color = '#333';
-      dl.style.display = 'none';
-      showScreen('feedback-screen');
-    }
-
-    function downloadData(){
-      if (!state.allData.length) return alert('No data to download');
-      const headers = Object.keys(state.allData[0]);
-      const csv = [
-        headers.join(','),
-        ...state.allData.map(r =>
-          headers.map(h => {
-            const v = r[h];
-            if (typeof v === 'string' && v.includes(',')) return `"${v.replace(/"/g,'""')}"`;
-            return v ?? '';
-          }).join(',')
-        )
-      ].join('\n');
-
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `spatial_nav_${state.participantInfo.id}_${Date.now()}.csv`;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-    }
-
-    /********* INIT *********/
-    // Prevent page scroll on arrow keys (desktop only)
-    if (!isMobile) {
-      window.addEventListener('keydown', (e) => {
-        if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
-      }, { passive:false });
-    }
-
-    // Enable start when form is complete and set up touch controls
-    document.addEventListener('DOMContentLoaded', () => {
-      maybeEnableStart();
-
-      // friendlier copy on the button so people know all fields are required
-      const startBtn = document.getElementById('start-button');
-      startBtn.textContent = 'Fill in all fields to start';
-
-      if (isMobile) {
-        setupTouchControls();
-        console.log('Mobile/tablet device detected - D-pad controls enabled');
-      } else {
-        console.log('Desktop device detected - D-pad controls disabled');
-      }
-      loadingMsgEl.style.display = 'none';
-    });
-  </script>
+        document.getElementById('start-button').addEventListener('click', startExperiment);
+    </script>
 </body>
 </html>
