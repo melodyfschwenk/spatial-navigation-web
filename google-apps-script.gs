@@ -33,8 +33,8 @@ function getSheet_() {
 
 function appendTrialRow_(data) {
   const sheet = getSheet_();
-  ensureInitialsColumn_(sheet);
-  const ts = new Date().toISOString();
+  ensureColumns_(sheet);
+  const ts = data.timestamp || new Date().toISOString();
   sheet.appendRow([
     ts,
     data.participant_id || '',
@@ -52,16 +52,39 @@ function appendTrialRow_(data) {
     data.correct_response || '',
     data.accuracy,
     data.rt_ms,
+    data.device_type || '',
     data.user_agent || ''
   ]);
 }
 
-// Ensure the sheet has a column for participant initials without overwriting existing data
-function ensureInitialsColumn_(sheet) {
-  const firstRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  if (firstRow.indexOf('participant_initials') === -1) {
+// Ensure required columns exist without overwriting existing data
+function ensureColumns_(sheet) {
+  let headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+
+  if (headers.indexOf('participant_initials') === -1) {
     sheet.insertColumnAfter(2);
     sheet.getRange(1, 3).setValue('participant_initials');
+    headers.splice(2, 0, 'participant_initials');
+  }
+
+  headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const uaIndex = headers.indexOf('user_agent');
+
+  if (headers.indexOf('device_type') === -1) {
+    if (uaIndex !== -1) {
+      sheet.insertColumnBefore(uaIndex + 1);
+      sheet.getRange(1, uaIndex + 1).setValue('device_type');
+    } else {
+      const lastCol = sheet.getLastColumn();
+      sheet.insertColumnAfter(lastCol);
+      sheet.getRange(1, lastCol + 1).setValue('device_type');
+    }
+  }
+
+  if (uaIndex === -1) {
+    const lastCol = sheet.getLastColumn();
+    sheet.insertColumnAfter(lastCol);
+    sheet.getRange(1, lastCol + 1).setValue('user_agent');
   }
 }
 
