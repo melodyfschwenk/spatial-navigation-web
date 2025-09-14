@@ -505,24 +505,9 @@ UP / DOWN / LEFT / RIGHT
       if (!group || !initials || !age || !gender || !handedness) return alert('Please fill in all required fields (Initials, Age, Gender, Handedness)');
 
       const btn = document.getElementById('start-button');
-      btn.disabled = true; btn.textContent = 'Assigning ID…';
+      btn.disabled = true;
 
-      // Try server → fallback locally; stays silent if server blocks CORS
-      let assignedId;
-      try {
-        const res = await fetch(GOOGLE_SHEET_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'nextIdLocked', groupCode: group, initials: initials })
-        });
-        const data = await res.json();
-        if (!data.ok || !data.id) throw new Error('Bad response');
-        assignedId = data.id;
-      } catch {
-        const bytes = new Uint8Array(8); crypto.getRandomValues(bytes);
-        const hex = Array.from(bytes).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,8);
-        assignedId = `${group}-tmp-${Date.now().toString(36)}-${hex}`;
-      }
+      const assignedId = `${group}-${initials}`;
 
       state.participantInfo = { id: assignedId, initials, group, age, gender, handedness, timestamp: new Date().toISOString() };
       state.sessionCode = assignedId;
@@ -556,7 +541,7 @@ UP / DOWN / LEFT / RIGHT
       setInstructionContinue(()=> { state.isPractice = true; state.currentTrial = 0; runPracticeTrial(); });
       showScreen('instruction-screen');
 
-      btn.disabled = false; btn.textContent = 'Start Experiment';
+      btn.disabled = false;
     }
 
     /********* PRACTICE HELPERS *********/
