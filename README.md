@@ -57,7 +57,7 @@ spatial-navigation-web/
 ## Participant Instructions
 
 1. **Access the Task**: Navigate to the provided URL
-2. **Enter Information**: Fill in participant ID, age, gender, and handedness
+2. **Enter Information**: Fill in initials, participant group, age, gender, and handedness
 3. **Respond Using Controls**: On keyboards press arrow keys; on touch devices use the on-screen D-pad
 4. **Practice Phase**: Complete 4 practice trials with feedback
 5. **Main Experiment**: Complete 9 blocks of 15 trials each
@@ -119,11 +119,6 @@ Counterbalance condition is automatically determined from participant ID (ID mod
 - Check browser popup blocker settings
 - Try a different browser
 - Ensure JavaScript is enabled
-
-### Participant ID Issues
-- IDs should be alphanumeric
-- Avoid special characters
-- Use consistent ID format across participants
 
 ## Data Analysis
 
