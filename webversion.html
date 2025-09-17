@@ -266,7 +266,7 @@
     const INSTRUCTIONS = {
       full: {
         egocentric: `
-You are the gray player in this task. Your goal: Move to the red stop sign. Never hit blue walls—they block you. The gray triangle shows your "front" - that's the way you are facing. Think like you are INSIDE the player, like in a video game: All moves depend on where YOU are looking.
+You are the gray player in this task. Your goal: Move to the red stop sign. Never hit blue walls—they block you. The gray triangle shows your "front"—that's the way you are facing (think of it like a nose on a face: it points forward). Think like you are INSIDE the player, like in a video game: All moves depend on where YOU are looking.
 
 Keys (always based on YOUR facing direction):
 • UP arrow: Go forward (straight where the triangle points).
@@ -274,11 +274,11 @@ Keys (always based on YOUR facing direction):
 • LEFT arrow: Go to YOUR left side.
 • RIGHT arrow: Go to YOUR right side.
 
-Examples:
+General examples:
 - If facing right, UP moves you right (forward).
 - If facing up, RIGHT moves you right (to your side).
 
-Your job: Choose just the FIRST step to start going to the stop sign. It might not always be obvious, especially with open spaces or walls. Avoid walls! Just try your best as if you are the player. 
+Your job: Choose just the FIRST step to start going to the stop sign. It might not always be obvious, especially with open spaces or walls. Avoid walls! Just try your best as if you are the player. Do it quick and right.
         `,
         allocentric: `
 Move the gray player to the red stop sign in this task. Never hit blue walls—they block you. This is like a map on a table: Moves are ALWAYS based on the screen directions. Ignore the gray triangle's facing—it does NOT matter.
@@ -289,11 +289,11 @@ Keys (always the same, fixed to the screen like a map):
 • LEFT arrow: Go toward the left side of the screen.
 • RIGHT arrow: Go toward the right side of the screen.
 
-Examples:
+General examples:
 - To go to the top of the screen, use UP (always).
 - To go to the left side, use LEFT (always).
 
-our job: Choose just the FIRST step to start going to the stop sign. It might not always be obvious, especially with open spaces or walls. Avoid walls! Just try your best like on a map. 
+Your job: Choose just the FIRST step to start going to the stop sign. It might not always be obvious, especially with open spaces or walls. Avoid walls! Just try your best like on a map. Do it quick and right.
         `,
         control: `
 Arrows show the path from the gray player to the red stop sign. Easy—just press the key for the FIRST arrow next to the player. Ignore everything else.
@@ -304,21 +304,23 @@ Keys:
 • LEFT arrow: If first arrow points left.
 • RIGHT arrow: If first arrow points right.
 
-Example: If the first arrow points left, press LEFT.
+General example: If the first arrow points left, press LEFT.
 
+Do it quick and right.
         `
       },
       brief: {
         egocentric: `
-PLAYER VIEW (you ARE the character. Your moves based on gray triangle):
+PLAYER VIEW (you ARE the character—moves based on gray triangle facing; like a nose on a face, it points forward):
 UP = forward (where triangle points)
 DOWN = backward (behind you)
 LEFT = to your left
 RIGHT = to your right
 
-Key reminder: Pick the first step that seems best to start toward the stop sign. Avoid walls—just try your best!        `,
+Key reminder: Pick the first step that seems best to start toward the stop sign. Avoid walls—just try your best!
+        `,
         allocentric: `
-MAP VIEW (like table map - ignore triangle, fixed to screen):
+MAP VIEW (like table map—ignore triangle, fixed to screen):
 UP = toward top of screen
 DOWN = toward bottom of screen
 LEFT = toward left of screen
@@ -331,7 +333,7 @@ ARROW FOLLOWING:
 Press key matching the FIRST arrow from player.
 UP / DOWN / LEFT / RIGHT
 
-Reminder: Always just the first arrow.
+Key reminder: Always just the first arrow.
         `
       }
     };
@@ -552,8 +554,9 @@ Reminder: Always just the first arrow.
       txt.innerHTML = `
         <h3>Practice Phase</h3>
         <p>You will practice two quick examples of each navigation type.</p>
-        <p><strong>PLAYER VIEW</strong>: act as if you are the player (UP=forward, DOWN=backward, LEFT/RIGHT=turn)</p>
-        <p><strong>MAP VIEW</strong>: use map directions (UP=top, DOWN=bottom, LEFT=west, RIGHT=east)</p>
+        <p><strong>PLAYER VIEW</strong>: act as if you are the player (UP=forward, DOWN=backward, LEFT=to your left, RIGHT=to your right)</p>
+        <p><strong>MAP VIEW</strong>: use map directions (UP=top, DOWN=bottom, LEFT=toward left of screen, RIGHT=toward right of screen)</p>
+        <p>Respond as quickly as you can—there's a time limit per trial.</p>
         ${controlInfo}
         <p>Press Continue when you're ready to start practice.</p>`;
       setInstructionContinue(()=> { state.isPractice = true; state.currentTrial = 0; runPracticeTrial(); });
@@ -576,8 +579,8 @@ Reminder: Always just the first arrow.
 
       helper.style.display = 'block';
       helper.innerHTML = (navType === 'egocentric')
-        ? 'Legend (practice only): UP=forward · DOWN=backward · LEFT=turn left · RIGHT=turn right'
-        : 'Legend (practice only): UP=top · DOWN=bottom · LEFT=left · RIGHT=right';
+        ? 'Legend (practice only): UP=forward · DOWN=backward · LEFT=to your left · RIGHT=to your right'
+        : 'Legend (practice only): UP=toward top · DOWN=toward bottom · LEFT=toward left of screen · RIGHT=toward right of screen';
     }
     async function showPracticeTypeBanner(navType, thenStartFn){
       const head = document.getElementById('nav-type-indicator');
@@ -587,11 +590,13 @@ Reminder: Always just the first arrow.
       head.textContent = navType === 'egocentric' ? 'PLAYER VIEW' : 'MAP VIEW';
 
       const blurb = (navType === 'egocentric')
-        ? 'UP=forward · DOWN=backward · LEFT=turn left · RIGHT=turn right'
-        : 'UP=top · DOWN=bottom · LEFT=left · RIGHT=right';
+        ? 'UP=forward · DOWN=backward · LEFT=to your left · RIGHT=to your right'
+        : 'UP=toward top · DOWN=toward bottom · LEFT=toward left of screen · RIGHT=toward right of screen';
 
       hideInstructionContinue();
       showScreen('instruction-screen');
+
+      await showComprehensionChecks(navType);
 
       for (let i=3; i>=1; i--){
         txt.innerHTML = `
@@ -601,6 +606,51 @@ Reminder: Always just the first arrow.
         await sleep(1000);
       }
       thenStartFn();
+    }
+
+    /********* COMPREHENSION CHECKS *********/
+    async function showComprehensionChecks(navType) {
+      const questions = {
+        egocentric: [
+          { q: 'If the gray triangle points to the right side of the screen, what key do you press to move forward (straight ahead)?', options: ['UP', 'DOWN', 'LEFT', 'RIGHT'], correct: 0 },
+          { q: 'Suppose the triangle is facing up (toward the top of the screen), and you want to move to your left. What key do you press?', options: ['UP', 'DOWN', 'LEFT', 'RIGHT'], correct: 2 },
+          { q: 'If the triangle points down (toward the bottom of the screen), what key moves you backward (behind you)?', options: ['UP', 'DOWN', 'LEFT', 'RIGHT'], correct: 1 }
+        ],
+        allocentric: [
+          { q: 'No matter which way the gray triangle points, what key moves the player toward the top of the screen?', options: ['UP', 'DOWN', 'LEFT', 'RIGHT'], correct: 0 },
+          { q: 'If you want to move toward the left side of the screen, what key do you press? (Ignore the triangle\'s direction.)', options: ['UP', 'DOWN', 'LEFT', 'RIGHT'], correct: 2 },
+          { q: 'Suppose the triangle faces right, but you need to go toward the bottom of the screen. What key do you use?', options: ['UP', 'DOWN', 'LEFT', 'RIGHT'], correct: 1 }
+        ],
+        control: [
+          { q: 'If the first arrow next to the player points up, what key do you press?', options: ['UP', 'DOWN', 'LEFT', 'RIGHT'], correct: 0 },
+          { q: 'The first arrow points left. What key matches it?', options: ['UP', 'DOWN', 'LEFT', 'RIGHT'], correct: 2 },
+          { q: 'If the first arrow points down, but there are more arrows after, what key do you press?', options: ['UP', 'DOWN', 'LEFT', 'RIGHT'], correct: 1 }
+        ]
+      }[navType] || [];
+
+      showScreen('instruction-screen');
+      const txt = document.getElementById('instruction-text');
+      const continueBtn = document.getElementById('instruction-continue');
+      continueBtn.style.display = 'none';
+
+      for (let q of questions) {
+        let attempts = 0;
+        while (attempts < 2) {
+          txt.innerHTML = `<p>${q.q}</p>${q.options.map((o,i) => `<button class="button" onclick="checkAnswer(${i}, ${q.correct})">${o}</button>`).join(' ')}`;
+          const selected = await new Promise(resolve => { window.checkAnswer = (chosen, correct) => resolve({chosen, correct}); });
+          if (selected.chosen === selected.correct) break;
+          attempts++;
+          txt.innerHTML += `<p style="color:red;">Not quite—try again! (Remember, in ${prettyHeader(navType)}...)</p>`;
+          await sleep(1500);
+        }
+        if (attempts >= 2) {
+          txt.innerHTML = '<p style="color:red;">Let\'s review the instructions again.</p>';
+          await sleep(2000);
+          return showBlockInstructions(); // Or equivalent for practice; adjust as needed
+        }
+      }
+      txt.innerHTML = '<p>Great! You got it.</p>';
+      await sleep(1000);
     }
 
     /********* PRACTICE FLOW *********/
@@ -640,7 +690,7 @@ Reminder: Always just the first arrow.
     }
 
     /********* MAIN BLOCKS *********/
-    function showBlockInstructions(){
+    async function showBlockInstructions(){
       const block = config.blocks[state.currentBlock];
       const head = document.getElementById('nav-type-indicator');
       const txt = document.getElementById('instruction-text');
@@ -654,10 +704,10 @@ Reminder: Always just the first arrow.
       const msg = {
         egocentric: `Navigate from the gray player to the red stop sign.<br><br>
                      Use ${controlMethod} as if YOU are the player:<br>
-                     UP=forward, DOWN=backward, LEFT=turn left, RIGHT=turn right`,
+                     UP=forward, DOWN=backward, LEFT=to your left, RIGHT=to your right`,
         allocentric:`Navigate from the gray player to the red stop sign.<br><br>
                      Use ${controlMethod} as map directions:<br>
-                     UP=top, DOWN=bottom, LEFT=west, RIGHT=east`,
+                     UP=toward top, DOWN=toward bottom, LEFT=toward left of screen, RIGHT=toward right of screen`,
         control:    `Follow the arrows shown.<br><br>
                      Press the ${controlMethod === 'arrow keys' ? 'arrow key' : 'arrow button'} matching the FIRST arrow from the player.`
       };
@@ -949,4 +999,3 @@ Reminder: Always just the first arrow.
   </script>
 </body>
 </html>
-
