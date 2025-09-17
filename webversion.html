@@ -266,65 +266,72 @@
     const INSTRUCTIONS = {
       full: {
         egocentric: `
-In this task, you will move from the gray player to the red stop sign while avoiding blue walls.
-The gray triangle shows which way the player is facing.
-Your job is to choose the first step the player should take. Make your choice as if you are the player.
+You are the gray player in this task. Your goal: Move to the red stop sign. Never hit blue walls—they block you. The gray triangle shows your "front" - that's the way you are facing. Think like you are INSIDE the player, like in a video game: All moves depend on where YOU are looking.
 
-Use these keys:
-• UP arrow: Move forward (in the direction the player is facing)
-• DOWN arrow: Move backward
-• LEFT arrow: Move to the player's left
-• RIGHT arrow: Move to the player's right
+Keys (always based on YOUR facing direction):
+• UP arrow: Go forward (straight where the triangle points).
+• DOWN arrow: Go backward (straight behind you).
+• LEFT arrow: Go to YOUR left side.
+• RIGHT arrow: Go to YOUR right side.
 
-Example: UP moves you forward in whatever direction you're facing.
-Choose the first step needed to reach the stop sign. Try to respond quickly and correctly.
+Examples:
+- If facing right, UP moves you right (forward).
+- If facing up, RIGHT moves you right (to your side).
+
+Your job: Choose just the FIRST step to start going to the stop sign. It might not always be obvious, especially with open spaces or walls. Avoid walls! Just try your best as if you are the player. 
         `,
         allocentric: `
-In this task, you will move from the gray player to the red stop sign while avoiding blue walls.
-Your job is to choose the first step the player should take using screen directions (like a map).
+Move the gray player to the red stop sign in this task. Never hit blue walls—they block you. This is like a map on a table: Moves are ALWAYS based on the screen directions. Ignore the gray triangle's facing—it does NOT matter.
 
-Use these keys:
-• UP arrow: Toward the top of the screen
-• DOWN arrow: Toward the bottom of the screen
-• LEFT arrow: Toward the left side of the screen
-• RIGHT arrow: Toward the right side of the screen
+Keys (always the same, fixed to the screen like a map):
+• UP arrow: Go toward the top of the screen.
+• DOWN arrow: Go toward the bottom of the screen.
+• LEFT arrow: Go toward the left side of the screen.
+• RIGHT arrow: Go toward the right side of the screen.
 
-No matter which way the player is facing, pressing UP always moves toward the top of the screen.
-Choose the first step needed to reach the target. Try to respond quickly and correctly.
+Examples:
+- To go to the top of the screen, use UP (always).
+- To go to the left side, use LEFT (always).
+
+our job: Choose just the FIRST step to start going to the stop sign. It might not always be obvious, especially with open spaces or walls. Avoid walls! Just try your best like on a map. 
         `,
         control: `
-In this task, you will see arrows showing the path from the player to the target.
-Your job is to follow the first arrow from the player's position.
+Arrows show the path from the gray player to the red stop sign. Easy—just press the key for the FIRST arrow next to the player. Ignore everything else.
 
-Use these keys:
-• UP arrow: When the first arrow points up
-• DOWN arrow: When the first arrow points down
-• LEFT arrow: When the first arrow points left
-• RIGHT arrow: When the first arrow points right
+Keys:
+• UP arrow: If first arrow points up.
+• DOWN arrow: If first arrow points down.
+• LEFT arrow: If first arrow points left.
+• RIGHT arrow: If first arrow points right.
 
-Example: Press the RIGHT arrow key if the first arrow points right.
-Try to respond quickly and correctly.
+Example: If the first arrow points left, press LEFT.
+
         `
       },
       brief: {
         egocentric: `
-PLAYER VIEW:
-UP = forward (direction you're facing)
-DOWN = backward
+PLAYER VIEW (you ARE the character. Your moves based on gray triangle):
+UP = forward (where triangle points)
+DOWN = backward (behind you)
 LEFT = to your left
 RIGHT = to your right
-        `,
+
+Key reminder: Pick the first step that seems best to start toward the stop sign. Avoid walls—just try your best!        `,
         allocentric: `
-MAP VIEW:
-UP = toward the top of the screen
-DOWN = toward the bottom of the screen
-LEFT = toward the left of the screen
-RIGHT = toward the right of the screen
+MAP VIEW (like table map - ignore triangle, fixed to screen):
+UP = toward top of screen
+DOWN = toward bottom of screen
+LEFT = toward left of screen
+RIGHT = toward right of screen
+
+Key reminder: Pick the first step that seems best to start toward the stop sign. Avoid walls—just try your best!
         `,
         control: `
 ARROW FOLLOWING:
-Press the arrow matching the FIRST arrow from the player.
+Press key matching the FIRST arrow from player.
 UP / DOWN / LEFT / RIGHT
+
+Reminder: Always just the first arrow.
         `
       }
     };
@@ -942,3 +949,4 @@ UP / DOWN / LEFT / RIGHT
   </script>
 </body>
 </html>
+
