@@ -264,79 +264,89 @@
 
     /********* INSTRUCTIONS *********/
     const INSTRUCTIONS = {
-      full: {
-        egocentric: `
-You are the gray player in this task. Your goal: Move to the red stop sign. Never hit blue walls, they block you. The gray triangle shows your "front" - that's the way you are facing (think of it like a nose on a face: it points forward). Think like you are INSIDE the player, like in a video game: All moves depend on where YOU are looking.
+  full: {
+    egocentric: `
+You are the gray player. Your goal is to get to the red stop sign.
+Important: The player will NOT move on the screen. Your only job is to pick the single best first step.
 
-Keys (always based on YOUR facing direction):
-• UP arrow: Go forward (straight where the triangle points).
-• DOWN arrow: Go backward (straight behind you).
-• LEFT arrow: Go to YOUR left side.
-• RIGHT arrow: Go to YOUR right side.
+Think of your player like a robot that is locked facing one direction and cannot turn. From where you stand, you can only do one of four things: step forward, step backward, or sidestep to your left or right.
 
-General examples:
-- If facing right, UP moves you right (forward).
-- If facing up, RIGHT moves you right (to your side).
+The gray triangle is like your "nose" — it shows the way you are facing. All moves are based on the direction your nose is pointing.
 
-Your job: Choose just the FIRST step to start going to the stop sign. It might not always be obvious, especially with open spaces or walls. Avoid walls! Just try your best as if you are the player.
-        `,
-        allocentric: `
-Move the gray player to the red stop sign in this task. Never hit blue walls, they block you. This is like a map on a table: Moves are ALWAYS based on the screen directions. Ignore the direction where the gray triangle is facing, it does NOT matter.
+Keys (based on the direction you are FACING):
+• UP arrow: Step Forward (the direction your nose points).
+• DOWN arrow: Step Backward
+• LEFT arrow: Sidestep to your Left
+• RIGHT arrow: Sidestep to your Right
 
-Keys (always the same, fixed to the screen like a map):
-• UP arrow: Go toward the top of the screen.
-• DOWN arrow: Go toward the bottom of the screen.
-• LEFT arrow: Go toward the left side of the screen.
-• RIGHT arrow: Go toward the right side of the screen.
+For example, if you are facing RIGHT, pressing UP makes you step FORWARD (which is one space to the right on the screen).
 
-General examples:
-- To go to the top of the screen, use UP (always).
-- To go to the left side, use LEFT (always).
+Your Job: Press the one key for the best first step (Forward, Backward, or Sidestep) you can take from where you are standing right now. Avoid walls. After you press a key, the next puzzle will appear.
+    `,
+    allocentric: `
+Your goal is to get the gray player to the red stop sign.
+Important: The player will NOT move on the screen. Your only job is to pick the single best first step.
 
-Your job: Choose just the FIRST step to start going to the stop sign. It might not always be obvious, especially with open spaces or walls. Avoid walls! Just try your best like on a map.
-        `,
-        control: `
-Arrows show the path from the gray player to the red stop sign. Just press the key for the FIRST arrow next to the player. Ignore everything else.
+Think of this like a classic arcade game (like Frogger) or a map on a table. The controls are always the same, and UP always means "up" on the screen.
+
+The direction the gray triangle is facing is just for show — ignore it! It does not affect how you move.
+
+Keys (always fixed to the SCREEN direction):
+• UP arrow: Move one space toward the top of the screen.
+• DOWN arrow: Move one space toward the bottom of the screen.
+• LEFT arrow: Move one space toward the left of the screen.
+• RIGHT arrow: Move one space toward the right of the screen.
+
+Your Job: Press the one key for the best first move to get closer to the stop sign. Avoid walls. After you press a key, the next puzzle will appear.
+    `,
+    control: `
+Arrows on the screen show you the path.
+Important: The player will NOT move. Just look at the first arrow and press the matching key.
+
+Your job is simple: Press the key that matches the direction of the VERY FIRST arrow coming from the player. Ignore everything else.
 
 Keys:
-• UP arrow: If first arrow points up.
-• DOWN arrow: If first arrow points down.
-• LEFT arrow: If first arrow points left.
-• RIGHT arrow: If first arrow points right.
+• UP arrow: If the first arrow points up.
+• DOWN arrow: If the first arrow points down.
+• LEFT arrow: If the first arrow points left.
+• RIGHT arrow: If the first arrow points right.
 
-General example: If the first arrow points left, press LEFT.
-
-Do it quick and right.
-        `
-      },
+Example: If the first arrow points left, you press LEFT. Then the next puzzle will appear.
+    `
+  },
       brief: {
-        egocentric: `
-PLAYER VIEW (you ARE the character, your moves are based on the direction the gray triangle facing; like a nose on a face, it points forward):
-UP = forward (where triangle points)
-DOWN = backward (behind you)
-LEFT = to your left
-RIGHT = to your right
+    egocentric: `
+PLAYER VIEW: You can't turn, only step. Moves are based on the direction the triangle "nose" is facing.
 
-Key reminder: Pick the first step that seems best to start toward the stop sign. Avoid walls - just try your best!
-        `,
-        allocentric: `
-MAP VIEW (like table map—ignore triangle, fixed to screen):
-UP = toward top of screen
-DOWN = toward bottom of screen
-LEFT = toward left of screen
-RIGHT = toward right of screen
+• UP = Step Forward
+• DOWN = Step Backward
+• LEFT = Sidestep Left
+• RIGHT = Sidestep Right
 
-Key reminder: Pick the first step that seems best to start toward the stop sign. Avoid walls—just try your best!
-        `,
-        control: `
-ARROW FOLLOWING:
-Press key matching the FIRST arrow from player.
-UP / DOWN / LEFT / RIGHT
+Task: Pick the single best first step. The player won't move on screen.
+    `,
+    allocentric: `
+MAP VIEW (like Frogger): Ignore the triangle. Moves are always fixed to the screen directions.
 
-Key reminder: Always just the first arrow.
-        `
-      }
-    };
+• UP = Screen Up
+• DOWN = Screen Down
+• LEFT = Screen Left
+• RIGHT = Screen Right
+
+Task: Pick the single best first step. The player won't move on screen.
+    `,
+    control: `
+ARROW FOLLOWING: Press the key that matches the FIRST arrow.
+
+• ↑ arrow on screen = UP key
+• ↓ arrow on screen = DOWN key
+• ← arrow on screen = LEFT key
+• → arrow on screen = RIGHT key
+
+Task: Just press the key for that first arrow. The player won't move.
+    `
+  }
+};
 
     function prettyHeader(navType) {
       return navType === 'egocentric' ? 'PLAYER VIEW'
@@ -702,15 +712,17 @@ Key reminder: Always just the first arrow.
       const controlMethod = isMobile ? 'on-screen arrow buttons' : 'arrow keys';
       
       const msg = {
-        egocentric: `Navigate from the gray player to the red stop sign.<br><br>
-                     Use ${controlMethod} as if YOU are the player:<br>
-                     UP=forward, DOWN=backward, LEFT=to your left, RIGHT=to your right`,
-        allocentric:`Navigate from the gray player to the red stop sign.<br><br>
-                     Use ${controlMethod} as map directions:<br>
-                     UP=toward top, DOWN=toward bottom, LEFT=toward left of screen, RIGHT=toward right of screen`,
-        control:    `Follow the arrows shown.<br><br>
-                     Press the ${controlMethod === 'arrow keys' ? 'arrow key' : 'arrow button'} matching the FIRST arrow from the player.`
-      };
+  egocentric: `Pick the best first step to the stop sign.<br><br>
+               <b>PLAYER VIEW (no turning):</b><br>
+               UP=Step Forward, DOWN=Step Back, LEFT=Sidestep Left, RIGHT=Sidestep Right`,
+
+  allocentric:`Pick the best first step to the stop sign.<br><br>
+                <b>MAP VIEW (ignore the triangle):</b><br>
+                UP=Screen Up, DOWN=Screen Down, LEFT=Screen Left, RIGHT=Screen Right`,
+
+  control:   `Follow the arrows on the screen.<br><br>
+               <b>Press the ${controlMethod === 'arrow keys' ? 'key' : 'button'} matching the FIRST arrow.</b>`
+};
       txt.innerHTML = msg[block.navType];
 
       setInstructionContinue(startBlock);
@@ -999,3 +1011,4 @@ Key reminder: Always just the first arrow.
   </script>
 </body>
 </html>
+
