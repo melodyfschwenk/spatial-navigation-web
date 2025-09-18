@@ -503,6 +503,14 @@ Key reminder: Always just the first arrow.
       startBtn.textContent = ready ? 'Start Experiment' : 'Fill in all fields to start';
     }
 
+    function asHTML(t){
+  // Turn double newlines into paragraphs, singles into <br>
+  return t.trim()
+    .replace(/\n\s*\n/g, '</p><p>')
+    .replace(/\n/g, '<br>');
+}
+
+
     /********* START *********/
     async function startExperiment(){
       const group = document.getElementById('participant-group').value;
@@ -696,38 +704,23 @@ Key reminder: Always just the first arrow.
 
     /********* MAIN BLOCKS *********/
     async function showBlockInstructions(){
-      const block = config.blocks[state.currentBlock];
-      const head = document.getElementById('nav-type-indicator');
-      const txt = document.getElementById('instruction-text');
+  const block = config.blocks[state.currentBlock];
+  const head = document.getElementById('nav-type-indicator');
+  const txt  = document.getElementById('instruction-text');
 
-      const name = prettyHeader(block.navType);
-      head.className = `nav-type-header ${block.navType}-header`;
-      head.textContent = name;
+  const name = prettyHeader(block.navType);
+  head.className = `nav-type-header ${block.navType}-header`;
+  head.textContent = name;
 
-      const controlMethod = isMobile ? 'on-screen arrow buttons' : 'arrow keys';
-      
-      const msg = {
-        egocentric: `Navigate from the gray player to the red stop sign.<br><br>
-                     Use ${controlMethod} as if YOU are the player:<br>
-                     UP=forward, DOWN=backward, LEFT=to your left, RIGHT=to your right`,
-        allocentric:`Navigate from the gray player to the red stop sign.<br><br>
-                     Use ${controlMethod} as map directions:<br>
-                     UP=toward top, DOWN=toward bottom, LEFT=toward left of screen, RIGHT=toward right of screen`,
-        control: INSTRUCTIONS.full.control.replace(/\n/g, '<br>')
-      };
-      txt.innerHTML = msg[block.navType];
+  // *** Use your new INSTRUCTIONS text for ALL nav types ***
+  const copy = INSTRUCTIONS.full[block.navType] || '';
+  txt.innerHTML = `<p>${asHTML(copy)}</p>`;
 
-      if (block.navType === 'control') {
-        setInstructionContinue(async () => {
-          await showComprehensionChecks('control');
-          startBlock();
-        });
-      } else {
-        setInstructionContinue(startBlock);
-      }
-      updateProgress();
-      showScreen('instruction-screen');
-    }
+  setInstructionContinue(startBlock);
+  updateProgress();
+  showScreen('instruction-screen');
+}
+
 
     async function startBlock(){
       const block = config.blocks[state.currentBlock];
