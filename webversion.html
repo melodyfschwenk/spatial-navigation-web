@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!DOCTYPE html> 
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
@@ -264,14 +264,14 @@
 
     /********* INSTRUCTIONS *********/
     const INSTRUCTIONS = {
-  full: {
-    egocentric: `
+      full: {
+        egocentric: `
 You are the gray player. Your goal is to get to the red stop sign.
 Important: The player will NOT move on the screen. Your only job is to pick the single best first step.
 
 Think of your player like a robot that is locked facing one direction and cannot turn. From where you stand, you can only do one of four things: step forward, step backward, or sidestep to your left or right.
 
-The gray triangle is like your "nose" — it shows the way you are facing. All moves are based on the direction your nose is pointing.
+The gray triangle is like your "nose" - it shows the way you are facing. All moves are based on the direction your nose is pointing.
 
 Keys (based on the direction you are FACING):
 • UP arrow: Step Forward (the direction your nose points).
@@ -282,14 +282,14 @@ Keys (based on the direction you are FACING):
 For example, if you are facing RIGHT, pressing UP makes you step FORWARD (which is one space to the right on the screen).
 
 Your Job: Press the one key for the best first step (Forward, Backward, or Sidestep) you can take from where you are standing right now. Avoid walls. After you press a key, the next puzzle will appear.
-    `,
-    allocentric: `
+        `,
+        allocentric: `
 Your goal is to get the gray player to the red stop sign.
 Important: The player will NOT move on the screen. Your only job is to pick the single best first step.
 
 Think of this like a classic arcade game (like Frogger) or a map on a table. The controls are always the same, and UP always means "up" on the screen.
 
-The direction the gray triangle is facing is just for show — ignore it! It does not affect how you move.
+The direction the gray triangle is facing is just for show - ignore it. It does not affect how you move.
 
 Keys (always fixed to the SCREEN direction):
 • UP arrow: Move one space toward the top of the screen.
@@ -298,8 +298,8 @@ Keys (always fixed to the SCREEN direction):
 • RIGHT arrow: Move one space toward the right of the screen.
 
 Your Job: Press the one key for the best first move to get closer to the stop sign. Avoid walls. After you press a key, the next puzzle will appear.
-    `,
-    control: `
+        `,
+        control: `
 Arrows on the screen show you the path.
 Important: The player will NOT move. Just look at the first arrow and press the matching key.
 
@@ -312,20 +312,20 @@ Keys:
 • RIGHT arrow: If the first arrow points right.
 
 Example: If the first arrow points left, you press LEFT. Then the next puzzle will appear.
-    `
-  },
+        `
+      },
       brief: {
-    egocentric: `
-PLAYER VIEW: You can't turn, only step. Moves are based on the direction the triangle "nose" is facing.
+        egocentric: `
+PLAYER VIEW: You cannot turn, only step. Moves are based on the direction the triangle "nose" is facing.
 
 • UP = Step Forward
 • DOWN = Step Backward
 • LEFT = Sidestep Left
 • RIGHT = Sidestep Right
 
-Task: Pick the single best first step. The player won't move on screen.
-    `,
-    allocentric: `
+Task: Pick the single best first step. The player will not move on screen.
+        `,
+        allocentric: `
 MAP VIEW (like Frogger): Ignore the triangle. Moves are always fixed to the screen directions.
 
 • UP = Screen Up
@@ -333,9 +333,9 @@ MAP VIEW (like Frogger): Ignore the triangle. Moves are always fixed to the scre
 • LEFT = Screen Left
 • RIGHT = Screen Right
 
-Task: Pick the single best first step. The player won't move on screen.
-    `,
-    control: `
+Task: Pick the single best first step. The player will not move on screen.
+        `,
+        control: `
 ARROW FOLLOWING: Press the key that matches the FIRST arrow.
 
 • ↑ arrow on screen = UP key
@@ -343,10 +343,15 @@ ARROW FOLLOWING: Press the key that matches the FIRST arrow.
 • ← arrow on screen = LEFT key
 • → arrow on screen = RIGHT key
 
-Task: Just press the key for that first arrow. The player won't move.
-    `
-  }
-};
+Task: Just press the key for that first arrow. The player will not move.
+        `
+      }
+    };
+
+    function getInstructionHTML(navType, variant='full') {
+      const v = INSTRUCTIONS[variant] || INSTRUCTIONS.full;
+      return (v && v[navType]) ? v[navType] : '';
+    }
 
     function prettyHeader(navType) {
       return navType === 'egocentric' ? 'PLAYER VIEW'
@@ -458,25 +463,19 @@ Task: Just press the key for that first arrow. The player won't move.
       try {
         const response = await fetch(GOOGLE_SHEET_URL, {
           method: 'POST',
-          mode: 'no-cors',  // This prevents CORS errors but means we can't read the response
+          mode: 'no-cors',
           headers: {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify(payload)
         });
-        // Note: With no-cors, we can't check the response, but the data should still be sent
       } catch(e) {
         console.error('Failed to send to sheets:', e);
       }
     }
 
     async function saveToGoogleSheet(payload){
-      // Add user agent to all payloads
-      const enrichedPayload = {
-        ...payload,
-        user_agent: navigator.userAgent
-      };
-      
+      const enrichedPayload = { ...payload, user_agent: navigator.userAgent };
       await sendToSheets(enrichedPayload);
     }
 
@@ -490,7 +489,6 @@ Task: Just press the key for that first arrow. The player won't move.
       if (!taskCode) return;
       const startTime = state.taskData && state.taskData[taskCode]?.startTime || Date.now();
       const timeSpent = Date.now() - startTime;
-      // We can log this locally since the main data is already being saved
       console.log(`Task ${taskCode} completed in ${Math.round(timeSpent/1000)} seconds`);
     }
 
@@ -526,9 +524,8 @@ Task: Just press the key for that first arrow. The player won't move.
       btn.disabled = true; 
       btn.textContent = 'Starting experiment...';
 
-      // Simple ID generation using initials and timestamp
       const timestamp = Date.now();
-      const shortTimestamp = timestamp.toString(36).slice(-6); // Last 6 chars of base36 timestamp
+      const shortTimestamp = timestamp.toString(36).slice(-6);
       const assignedId = `${group}-${initials}-${shortTimestamp}`;
 
       state.participantInfo = { 
@@ -543,7 +540,7 @@ Task: Just press the key for that first arrow. The player won't move.
       state.sessionCode = assignedId;
       startTask('spatial_navigation');
 
-      // Position on-screen dpad based on handedness (only if mobile)
+      // Position dpad based on handedness (only if mobile)
       if (isMobile) {
         const dpad = document.getElementById('touch-controls');
         dpad.classList.toggle('left-handed', handedness === 'left');
@@ -554,7 +551,7 @@ Task: Just press the key for that first arrow. The player won't move.
       config.blocks = createBlockSequence(cb);
       state.usedStimuliTracker = {};
 
-      // Practice intro - mention controls based on device type
+      // Practice intro - device based control text
       const txt = document.getElementById('instruction-text');
       const head = document.getElementById('nav-type-indicator'); head.className=''; head.textContent='';
       const controlInfo = isMobile 
@@ -566,9 +563,9 @@ Task: Just press the key for that first arrow. The player won't move.
         <p>You will practice two quick examples of each navigation type.</p>
         <p><strong>PLAYER VIEW</strong>: act as if you are the player (UP=forward, DOWN=backward, LEFT=to your left, RIGHT=to your right)</p>
         <p><strong>MAP VIEW</strong>: use map directions (UP=top, DOWN=bottom, LEFT=toward left of screen, RIGHT=toward right of screen)</p>
-        <p>Respond as quickly as you can—there's a time limit per trial.</p>
+        <p>Respond as quickly as you can, there is a time limit per trial.</p>
         ${controlInfo}
-        <p>Press Continue when you're ready to start practice.</p>`;
+        <p>Press Continue when you are ready to start practice.</p>`;
       setInstructionContinue(()=> { state.isPractice = true; state.currentTrial = 0; runPracticeTrial(); });
       showScreen('instruction-screen');
 
@@ -592,6 +589,7 @@ Task: Just press the key for that first arrow. The player won't move.
         ? 'Legend (practice only): UP=forward · DOWN=backward · LEFT=to your left · RIGHT=to your right'
         : 'Legend (practice only): UP=toward top · DOWN=toward bottom · LEFT=toward left of screen · RIGHT=toward right of screen';
     }
+
     async function showPracticeTypeBanner(navType, thenStartFn){
       const head = document.getElementById('nav-type-indicator');
       const txt  = document.getElementById('instruction-text');
@@ -599,9 +597,8 @@ Task: Just press the key for that first arrow. The player won't move.
       head.className = `nav-type-header ${navType}-header`;
       head.textContent = navType === 'egocentric' ? 'PLAYER VIEW' : 'MAP VIEW';
 
-      const blurb = (navType === 'egocentric')
-        ? 'UP=forward · DOWN=backward · LEFT=to your left · RIGHT=to your right'
-        : 'UP=toward top · DOWN=toward bottom · LEFT=toward left of screen · RIGHT=toward right of screen';
+      // Use your brief copy here
+      txt.innerHTML = getInstructionHTML(navType, 'brief');
 
       hideInstructionContinue();
       showScreen('instruction-screen');
@@ -611,7 +608,6 @@ Task: Just press the key for that first arrow. The player won't move.
       for (let i=3; i>=1; i--){
         txt.innerHTML = `
           <p><strong>${head.textContent}</strong> practice (2 quick questions)</p>
-          <p>${blurb}</p>
           <p>Starting in ${i}…</p>`;
         await sleep(1000);
       }
@@ -650,16 +646,16 @@ Task: Just press the key for that first arrow. The player won't move.
           const selected = await new Promise(resolve => { window.checkAnswer = (chosen, correct) => resolve({chosen, correct}); });
           if (selected.chosen === selected.correct) break;
           attempts++;
-          txt.innerHTML += `<p style="color:red;">Not quite—try again! (Remember, in ${prettyHeader(navType)}...)</p>`;
+          txt.innerHTML += `<p style="color:red;">Not quite, try again.</p>`;
           await sleep(1500);
         }
         if (attempts >= 2) {
-          txt.innerHTML = '<p style="color:red;">Let\'s review the instructions again.</p>';
+          txt.innerHTML = '<p style="color:red;">Let us review the instructions again.</p>';
           await sleep(2000);
-          return showBlockInstructions(); // Or equivalent for practice; adjust as needed
+          return showBlockInstructions();
         }
       }
-      txt.innerHTML = '<p>Great! You got it.</p>';
+      txt.innerHTML = '<p>Great, you got it.</p>';
       await sleep(1000);
     }
 
@@ -709,21 +705,8 @@ Task: Just press the key for that first arrow. The player won't move.
       head.className = `nav-type-header ${block.navType}-header`;
       head.textContent = name;
 
-      const controlMethod = isMobile ? 'on-screen arrow buttons' : 'arrow keys';
-      
-      const msg = {
-  egocentric: `Pick the best first step to the stop sign.<br><br>
-               <b>PLAYER VIEW (no turning):</b><br>
-               UP=Step Forward, DOWN=Step Back, LEFT=Sidestep Left, RIGHT=Sidestep Right`,
-
-  allocentric:`Pick the best first step to the stop sign.<br><br>
-                <b>MAP VIEW (ignore the triangle):</b><br>
-                UP=Screen Up, DOWN=Screen Down, LEFT=Screen Left, RIGHT=Screen Right`,
-
-  control:   `Follow the arrows on the screen.<br><br>
-               <b>Press the ${controlMethod === 'arrow keys' ? 'key' : 'button'} matching the FIRST arrow.</b>`
-};
-      txt.innerHTML = msg[block.navType];
+      // Use your new copy
+      txt.innerHTML = getInstructionHTML(block.navType, 'full');
 
       setInstructionContinue(startBlock);
       updateProgress();
@@ -753,7 +736,7 @@ Task: Just press the key for that first arrow. The player won't move.
         if (state.currentBlock >= config.blocks.length) {
           showCompletion();
         } else {
-          showBlockInstructions(); // break between blocks
+          showBlockInstructions();
         }
         return;
       }
@@ -784,7 +767,7 @@ Task: Just press the key for that first arrow. The player won't move.
       window.focus();
       img.style.display = 'none';
       fix.style.display = 'block';
-      dpad.style.display = 'none'; // Always hide initially
+      dpad.style.display = 'none';
       showScreen('stimulus-screen');
 
       setTimeout(()=> {
@@ -793,7 +776,6 @@ Task: Just press the key for that first arrow. The player won't move.
         img.style.display = 'block';
         state.stimulusOnsetTime = performance.now();
         
-        // Only show D-pad on mobile/tablet devices
         if (isMobile) {
           dpad.style.display = 'block';
         }
@@ -832,7 +814,6 @@ Task: Just press the key for that first arrow. The player won't move.
         state.onKeyHandler = null;
       }
 
-      // Always hide touch controls after a response
       document.getElementById('touch-controls').style.display = 'none';
 
       const map = { ArrowUp:'up', ArrowDown:'down', ArrowLeft:'left', ArrowRight:'right', timeout:'none' };
@@ -985,30 +966,26 @@ Task: Just press the key for that first arrow. The player won't move.
     }
 
     /********* INIT *********/
-    // Prevent page scroll on arrow keys (desktop only)
     if (!isMobile) {
       window.addEventListener('keydown', (e) => {
         if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
       }, { passive:false });
     }
 
-    // Enable start when form is complete and set up touch controls
     document.addEventListener('DOMContentLoaded', () => {
       maybeEnableStart();
 
-      // friendlier copy on the button so people know all fields are required
       const startBtn = document.getElementById('start-button');
       startBtn.textContent = 'Fill in all fields to start';
 
       if (isMobile) {
         setupTouchControls();
-        console.log('Mobile/tablet device detected - D-pad controls enabled');
+        console.log('Mobile or tablet detected - D-pad enabled');
       } else {
-        console.log('Desktop device detected - D-pad controls disabled');
+        console.log('Desktop detected - D-pad disabled');
       }
       loadingMsgEl.style.display = 'none';
     });
   </script>
 </body>
 </html>
-
